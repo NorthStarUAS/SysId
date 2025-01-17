@@ -35,10 +35,11 @@ xp = XPlane()
 hil = HIL()
 
 model = 'Rascal110-JSBSim'
+#model = 'SR22T'
 # pathJSB = os.path.join("/home/clolson/Projects/ADD_Simulator/simulation-python-jsbsim", "JSBSim")
 # pathJSB = os.path.join("/Users/Cirrus/Projects/ADD_Simulator/simulation-python-jsbsim", "JSBSim")
 #pathJSB = os.path.join("/home/curt/Sync", "JSBSim")
-pathJSB = "/home/curt/Projects/FlightGear/flightgear-fgaddon/Aircraft/Rascal"
+pathJSB = "/home/clolson/Projects/FlightGear/flightgear-fgaddon/Aircraft/Rascal"
 sim = JSBSimWrap(model, pathJSB)
 sim.SetupICprops()
 
