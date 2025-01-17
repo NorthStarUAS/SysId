@@ -79,7 +79,7 @@ class HIL():
         msg = inceptors_v2()
         msg.props2msg(inceptors_node)
         msg.master_switch = True
-        msg.throttle_enable = True
+        msg.motor_enable = True
         buf = msg.pack()
         packet = wrap_packet(msg.id, buf)
         self.sock_out.sendto(packet, (link_host, link_recv_port))
@@ -122,7 +122,7 @@ class HIL():
             if packet_id == effectors_v1_id:
                 if self.start_time is None:
                     self.start_time = time.time()
-                if time.time() > self.start_time + 10:
+                if time.time() > self.start_time + 30:
                     msg = effectors_v1(payload)
                     print("received:", msg.__dict__)
                     inceptors_node.setBool("master_switch", True)  # external FCS control
