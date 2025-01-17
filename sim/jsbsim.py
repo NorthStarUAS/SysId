@@ -53,15 +53,47 @@ class JSBSimWrap:
             self.fdm["ic/lat-geod-deg"] = 46.866
             self.fdm["ic/long-gc-deg"] = -92.168
             self.fdm["ic/terrain-elevation-ft"] = 1414
-            self.fdm["ic/h-agl-ft"] = 1.5
+            self.fdm["ic/h-agl-ft"] = 3.0
             self.fdm["ic/phi-deg"] = 0.0
             self.fdm["ic/theta-deg"] = 10
+            self.fdm['ic/psi-true-deg'] = -135
+        if False:
+            # North Platte, NE
+            self.fdm["ic/lat-geod-deg"] = 41.12
+            self.fdm["ic/long-gc-deg"] = -100.68
+            self.fdm["ic/terrain-elevation-ft"] = 2777
+            self.fdm["ic/h-agl-ft"] = 1000
+            self.fdm['ic/psi-true-deg'] = -135
+        if False:
+            # Land Airport, CO
+            self.fdm["ic/lat-geod-deg"] = 40.09
+            self.fdm["ic/long-gc-deg"] = -104.62
+            self.fdm["ic/terrain-elevation-ft"] = 5000
+            self.fdm["ic/h-agl-ft"] = 1000
+            self.fdm['ic/psi-true-deg'] = -135
+        if False:
+            # Alamosa, NM
+            self.fdm["ic/lat-geod-deg"] = 37.47
+            self.fdm["ic/long-gc-deg"] = -105.85
+            self.fdm["ic/terrain-elevation-ft"] = 7539
+            self.fdm["ic/h-agl-ft"] = 1000
             self.fdm['ic/psi-true-deg'] = -135
         self.fdm["propulsion/set-running"] = -1
 
         # self.fdm.disable_output() # Disable Output
         self.fdm.run_ic()
         # self.fdm.enable_output()
+
+        self.fdm['fcs/aileron-cmd-norm'] = 0
+        self.fdm['fcs/roll-trim-cmd-norm'] = 0
+
+        self.fdm['fcs/elevator-cmd-norm'] = 0
+        self.fdm['fcs/pitch-trim-cmd-norm'] = 0
+
+        self.fdm['fcs/rudder-cmd-norm'] = 0
+        self.fdm['fcs/yaw-trim-cmd-norm'] = 0
+
+        self.fdm['fcs/throttle-cmd-norm'] = 0
 
     def SetupICfile(self, icFile):
         # Load IC file
