@@ -262,7 +262,7 @@ class StateManager():
             #print("v_ned:", self.vel_ned, np.linalg.norm(self.vel_ned),
             #      "v_body:", self.vel_body, np.linalg.norm(self.vel_body))
 
-            # compute alpha and beta from body frame velocity
+            # compute alpha and beta estimates) from body frame velocity
             self.alpha = [ atan2( self.vel_body[2], self.vel_body[0] ) ] + self.alpha[:num]
             self.beta = [ atan2( -self.vel_body[1], self.vel_body[0] ) ] + self.beta[:num]
             #print("v(body):", v_body, "alpha = %.1f" % (self.alpha/d2r), "beta = %.1f" % (self.beta/d2r))
@@ -395,6 +395,14 @@ class StateManager():
                 val = self.alpha[n] * r2d
             elif field == "beta_deg":
                 val = self.beta[n] * r2d
+            elif field == "alpha_deg*qbar":
+                val = self.alpha[n] * r2d * self.qbar
+            elif field == "beta_deg*qbar":
+                val = self.beta[n] * r2d * self.qbar
+            elif field == "alpha_deg*vc_mps":
+                val = self.alpha[n] * r2d * self.vc_mps
+            elif field == "beta_deg*vc_mps":
+                val = self.beta[n] * r2d * self.vc_mps
             elif field == "sin(alpha_deg)*qbar":
                 val = sin(self.alpha[n]) * self.qbar
             elif field == "alpha_dot":
@@ -415,6 +423,25 @@ class StateManager():
                 val = self.q_term1
             elif field == "r":
                 val = self.gyros[n][2]
+            elif field == "dp":
+                val = (self.gyros[n][0] - self.gyros[n-1][0]) / self.dt
+            elif field == "dq":
+                val = (self.gyros[n][1] - self.gyros[n-1][1]) / self.dt
+            elif field == "dr":
+                val = (self.gyros[n][2] - self.gyros[n-1][2]) / self.dt
+            elif field == "p*qbar":
+                val = self.gyros[n][0]*self.qbar
+            elif field == "q*qbar":
+                val = self.gyros[n][1]*self.qbar
+            elif field == "r*qbar":
+                val = self.gyros[n][2]*self.qbar
+            elif field == "p*vc_mps":
+                val = self.gyros[n][0]*self.vc_mps
+            elif field == "q*vc_mps":
+                val = self.gyros[n][1]*self.vc_mps
+            elif field == "r*vc_mps":
+                val = self.gyros[n][2]*self.vc_mps
+
             elif field == "ax":
                 val = self.accels[n][0]
             elif field == "ay":
@@ -433,6 +460,8 @@ class StateManager():
                 val = abs(self.accels[n][1])
             elif field == "az":
                 val = self.accels[n][2]
+            elif field == "az/qbar":
+                val = self.accels[n][2] / self.qbar
             elif field == "one":
                 val = 1.0
             else:

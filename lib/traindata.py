@@ -145,16 +145,16 @@ class TrainData():
                 if "effectors" in record:
                     actpt = record["effectors"]
                     if vehicle == "wing":
-                        state_mgr.set_throttle( actpt["channel"][0] )
-                        ail = actpt["channel"][1]
-                        ele = actpt["channel"][2]
-                        rud = actpt["channel"][3]
+                        state_mgr.set_throttle( actpt["power"] )
+                        ail = actpt["aileron"]
+                        ele = actpt["elevator"]
+                        rud = actpt["rudder"]
                         if invert_elevator:
                             ele = -ele
                         if invert_rudder:
                             rud = -rud
                         if "flaps" in actpt:
-                            flaps = actpt["channel"][4]
+                            flaps = actpt["flaps"]
                         else:
                             flaps = 0
                         state_mgr.set_flight_surfaces( ail, ele, rud, flaps )
@@ -197,11 +197,11 @@ class TrainData():
                         print("%.2f %.2f" % (wn, we))
                 if "nav" in record:
                     navpt = record["nav"]
-                    psi = navpt["yaw_deg"] * d2r
+                    psi = navpt["psi_deg"] * d2r
                     if psi_bias is not None:
                         psi += psi_bias
-                    state_mgr.set_orientation( navpt["roll_deg"]*d2r, navpt["pitch_deg"]*d2r, navpt["yaw_deg"]*d2r )
-                    state_mgr.set_pos(navpt["longitude_raw"]/10000000.0, navpt["latitude_raw"]/10000000.0, navpt["altitude_m"])
+                    state_mgr.set_orientation( navpt["phi_deg"]*d2r, navpt["theta_deg"]*d2r, navpt["psi_deg"]*d2r )
+                    state_mgr.set_pos(navpt["longitude_deg"], navpt["latitude_deg"], navpt["altitude_m"])
                     if vehicle == "wing" or np.linalg.norm([navpt["vn"], navpt["ve"], navpt["vd"]]) > 0.000001:
                         state_mgr.set_ned_velocity( navpt["vn_mps"], navpt["ve_mps"],
                                                         navpt["vd_mps"], wn, we, wd )

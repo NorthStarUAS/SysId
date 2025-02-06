@@ -46,10 +46,14 @@ inceptor_terms = [
 inertial_terms = [
     "one",
     "p", "q", "r",        # imu (body) rates
+    "dp", "dq", "dr",
+    "p*qbar", "q*qbar", "r*qbar",        # imu (body) rates
+    "p*vc_mps", "q*vc_mps", "r*vc_mps",        # imu (body) rates
     "ax",                 # thrust - drag
     "ay",                 # side force
     "ay^2", "ay*vc_mps", "ay*qbar",
     "az",                 # lift
+    "az/qbar",
     "bgx", "bgy", "bgz",  # gravity rotated into body frame
     "abs(ay)", "abs(bgy)",
     "q_term1",            # pitch bias in level turn
@@ -66,6 +70,8 @@ airdata_terms = [
     # "alpha_dot",
     "alpha_deg",          # angle of attack
     "beta_deg",           # side slip angle
+    "alpha_deg*qbar", "alpha_deg*vc_mps",
+    "beta_deg*qbar", "beta_deg*vc_mps",
     "qbar",
     "1/vc_mps",
     "1/qbar",
@@ -76,10 +82,10 @@ airdata_terms = [
 ]
 
 inceptor_airdata_terms = [
-    "aileron*qbar", "aileron*vc_mps", # "aileron*qbar_1",
+    "aileron*qbar", "aileron*vc_mps",   # "aileron*qbar_1",
     "abs(aileron)*qbar",
     "elevator*qbar", "elevator*vc_mps", # "elevator*qbar_1", "elevator*qbar_2", "elevator*qbar_3",
-    "rudder*qbar", "rudder*vc_mps", # "rudder*qbar_1", "rudder*qbar_2", "rudder*qbar_3",
+    "rudder*qbar", "rudder*vc_mps",     # "rudder*qbar_1", "rudder*qbar_2", "rudder*qbar_3",
     "abs(rudder)*qbar",
 ]
 
@@ -140,11 +146,24 @@ for i, s in enumerate(train_states):
         propagate.append( [src, dst] )
 print("Previous state propagation:", propagate)
 
-state_mgr.set_is_flying_thresholds(15*kt2mps, 10*kt2mps) # bob ross
-# state_mgr.set_is_flying_thresholds(75*kt2mps, 65*kt2mps) # sr22
+# state_mgr.set_is_flying_thresholds(15*kt2mps, 10*kt2mps) # bob ross
+state_mgr.set_is_flying_thresholds(75*kt2mps, 65*kt2mps) # sr22
 
 train_data = TrainData()
 train_data.load_flightdata(args.flight, args.vehicle, args.invert_elevator, args.invert_rudder, state_mgr, conditions, train_states)
+
+print(train_data.cond_list[0].shape)
+# train_data.cond_list[0] = np.delete(train_data.cond_list[0], slice(526889,527132), axis=1)
+# train_data.cond_list[0] = np.delete(train_data.cond_list[0], slice(526406,526650), axis=1)
+# train_data.cond_list[0] = np.delete(train_data.cond_list[0], slice(520869,521115), axis=1)
+# train_data.cond_list[0] = np.delete(train_data.cond_list[0], slice(520223,520477), axis=1)
+# train_data.cond_list[0] = np.delete(train_data.cond_list[0], slice(519821,520066), axis=1)
+# train_data.cond_list[0] = np.delete(train_data.cond_list[0], slice(519262,519629), axis=1)
+# train_data.cond_list[0] = np.delete(train_data.cond_list[0], slice(518383,518623), axis=1)
+# train_data.cond_list[0] = np.delete(train_data.cond_list[0], slice(517968,518217), axis=1)
+# train_data.cond_list[0] = np.delete(train_data.cond_list[0], slice(484370,485507), axis=1)
+# train_data.cond_list[0] = np.delete(train_data.cond_list[0], slice(476842,477080), axis=1)
+# train_data.cond_list[0] = np.delete(train_data.cond_list[0], slice(310612,312500), axis=1)
 
 print("Conditions report:")
 for i, cond in enumerate(conditions):
@@ -157,20 +176,66 @@ for i, cond in enumerate(conditions):
 from scipy import signal
 def do_filter(traindata, dt):
     print("filter...", dt)
-    cutoff_freq = 0.5
+    cutoff_freq = 5
     b, a = signal.butter(4, cutoff_freq, 'low', fs=(1/dt), output='sos', analog=False)
     print(b,a)
     for i in range(len(traindata)):
         print(i)
         x = traindata[i,:]
         print(x.shape)
-        print("nan:", np.isnan(x).any())
-        print("inf:", np.isinf(x).any())
+        print("any nan's?:", np.isnan(x).any())
+        print("any inf's?:", np.isinf(x).any())
         # need to use filtfilt here to avoid phase loss
         # filt = signal.filtfilt(b, a, x, method="gust")
         filt = signal.sosfilt((b, a), x)
         traindata[i,:] = filt
         print(filt)
+
+# find/filter not-useful interpolated sections
+from scipy.ndimage import gaussian_filter1d
+for i, cond in enumerate(conditions):
+    print(i, "len:", len(train_data.cond_list[i]))
+    if not len(train_data.cond_list[i]):
+        continue
+    ax = train_data.cond_list[i][train_states.index("ax")]
+    ay = train_data.cond_list[i][train_states.index("ay")]
+    az = train_data.cond_list[i][train_states.index("az")]
+    accel = np.sqrt( ax*ax + ay*ay + az*az )
+
+    # cutoff_freq = 0.05
+    # b, a = signal.butter(4, cutoff_freq, analog=False)
+    # print(b,a)
+    # filt = signal.filtfilt(b, a, accel)
+    filt = gaussian_filter1d(accel, 2)
+    print("accel shape:", accel.shape)
+    print("filt shape:", filt.shape)
+    print("filt:", filt)
+    diff = accel-filt
+    # diff = diff[np.abs(diff)<0.2]
+    # plt.figure()
+    # plt.plot(accel, label="cond %d: accels" % i)
+    # plt.plot(filt, label="cond %d: accels (filt)" % i)
+    # plt.plot(diff, label="cond %d: diff" % i)
+    print("finding segments...")
+    segments = []
+    thresh = 0.2
+    start = 0
+    while start < len(diff):
+        end = start
+        while end < len(diff) and abs(diff[end]) < thresh:
+            end += 1
+        if end - start > 25:
+            # 0.5 sec
+            print("adding segment:", [start-5, end+5])
+            segments.append([start-5, end+5])
+            plt.axvspan(start-5, end+5, alpha=0.5, color='red')
+        start = end + 1
+    # plt.legend()
+    # plt.show()
+
+    # now delete those segments!
+    for segment in reversed(segments):
+        train_data.cond_list[i] = np.delete(train_data.cond_list[i], slice(segment[0],segment[1]), axis=1)
 
 def solve(traindata, includes_idx, solutions_idx):
     srcdata = traindata[includes_idx,:]
@@ -181,8 +246,8 @@ def solve(traindata, includes_idx, solutions_idx):
     Y = np.array(soldata[:,1:])
     print("X:", X.shape)
     print("Y:", Y.shape)
-    # print("X:\n", np.array(X))
-    # print("Y:\n", np.array(Y))
+    print("X:\n", np.array(X))
+    print("Y:\n", np.array(Y))
 
     # Y = A * X, solve for A
     #
@@ -431,11 +496,11 @@ def parameter_find_5(traindata, train_states, y_state, include_states, exclude_s
 
         fig, axs = plt.subplots(2, sharex=True)
         fig.suptitle("Estimate for: " + y_state + " = " + terms)
-        axs[0].plot(traindata[output_idx,1:].T, label="original signal")
         if self_reference:
             axs[0].plot(sim_est[:,:-1].T, label="sim signal")
         else:
             axs[0].plot(min_est[:,:-1].T, label="fit signal")
+        axs[0].plot(traindata[output_idx,1:].T, label="original signal")
         axs[0].legend()
         if self_reference:
             axs[1].plot(sim_error[0,:].T, label="sim error")
@@ -459,10 +524,27 @@ def parameter_fit_1(traindata, train_states, input_states, output_states, self_r
     input_idx = []
     output_idx = []
 
+    # for i in range(len(train_states)):
+    #     plt.figure()
+    #     plt.plot(traindata[i], label=train_states[i])
+    #     plt.legend()
+    # plt.show()
+
     for x in input_states:
         input_idx.append(train_states.index(x))
+        plt.figure()
+        plt.plot(traindata[train_states.index(x)], label=train_states[train_states.index(x)])
+        plt.legend()
+
+        plt.figure()
+        plt.plot(traindata[train_states.index(output_states[0])], traindata[train_states.index(x)], ',', label=train_states[train_states.index(x)])
+        plt.legend()
+
     for x in output_states:
         output_idx.append(train_states.index(x))
+        plt.figure()
+        plt.plot(traindata[train_states.index(x)], label=train_states[train_states.index(x)])
+        plt.legend()
 
     A = solve(traindata, input_idx, output_idx)
 
@@ -497,8 +579,8 @@ def parameter_fit_1(traindata, train_states, input_states, output_states, self_r
 
         fig, axs = plt.subplots(2, sharex=True)
         fig.suptitle("Estimate for: " + output_states[i] + " = " + terms)
-        axs[0].plot(traindata[output_idx[i],1:].T, label="original signal")
         axs[0].plot(est[i,:-1].T, label="fit signal")
+        axs[0].plot(traindata[output_idx[i],1:].T, label="original signal")
         axs[0].legend()
         axs[1].plot(error.T, label="fit error")
         y_mean = np.mean(error)
@@ -523,7 +605,7 @@ for i, cond in enumerate(conditions):
         corr = np.corrcoef(traindata)
         print("corr:\n", corr)
 
-    if False:
+    if True:
         do_filter(traindata, dt)
 
     # sysid = SystemIdentification(args.vehicle)
@@ -532,7 +614,7 @@ for i, cond in enumerate(conditions):
     if False and False:
         mass_solution_4(traindata, train_states, output_states, self_reference=True)
 
-    if True:
+    if False:
         # Parameter predictionive correlation: these are the things we want to
         # control, this will find the most important "predictive" correlations,
         # hopefully some external input (inceptor, control surface, etc.)
@@ -561,18 +643,48 @@ for i, cond in enumerate(conditions):
         # them included in our lateral controller, even if there is a
         # clear correlation in the flight data.
 
+        # y_state = "az"
+        # include_states = ["one"]
+        # exclude_states = []
+
         # enable these one at a time (decide if we are building the controller around yaw rate or beta_deg)
-        # y_state = "p"
-        # y_state = "r"
+
+        include_states = ["one"]
+
+        # y_state = "dp"  # fit states: ail*qbar, rud*qbar, ay
+        # exclude_states = ["p", "p*vc_mps", "p*qbar", "rudder*vc_mps"]
+
+        y_state = "q"                                         # pitch rate change
+        include_states += ["alpha_deg*qbar", "beta_deg*qbar"]  # stability terms
+        include_states += ["elevator*qbar"]                    # control terms
+                                                               # ignoring dynamic terms (delta_q_hat, delta_alpha)
+        exclude_states = ["q", "q*qbar", "q*vc_mps"]
+
+        # bgy (roll angle) correlates very well (too well?) with yaw rate
+        # y_state = "dr"
+        # exclude_states = ["r*vc_mps", "r*qbar"]
+
+        # no good correlators with beta
         # y_state = "beta_deg"
-        include_states = ["aileron*qbar", "rudder*qbar", "one"]
+        # exclude_states = ["beta_deg*vc_mps", "beta_deg*qbar"]
+
+        # y_state = "ay"
+        # include_states = ["aileron*qbar", "rudder*qbar", "one", "bgy"]
+        # exclude_states = ["beta_deg*vc_mps", "beta_deg*qbar"]
+        # exclude_states = ["ay*vc_mps", "ay*qbar", "ay^2", "abs(ay)", "ax", "az"]
 
         # notice that rudder deflection leads to significant pitch down moment in decrab ... do we want to factor that in some how?
-        y_state = "q"
-        include_states = ["elevator*qbar", "one"]
+        # y_state = "q"
+        # include_states = ["elevator*qbar", "one"]
+
+        # y_state = "alpha_deg"
+        # include_states = ["one", "1/qbar", "1/vc_mps", "az"]
+        # include_states = ["one", "1/qbar", "q", "az"]
+        # include_states = ["one"]
+        # exclude_states = ["alpha_deg", "alpha_deg*qbar", "alpha_deg*vc_mps", "ay*vc_mps", "ay*qbar", "ay^2", "abs(ay)", "p", "bgx", "beta_deg", "abs(rudder)*qbar"]
 
         # exclude states
-        exclude_states = ["p", "q", "r"] + inceptor_terms + inceptor_airdata_terms  # avoid self referencing
+        # exclude_states = ["p", "q", "r"] + inceptor_terms + inceptor_airdata_terms  # avoid self referencing
         # exclude_states = ["p", "q", "r", "beta_deg"]
         # exclude_states = []
 
@@ -648,17 +760,23 @@ for i, cond in enumerate(conditions):
 
         # Todo: look if the p <- ay relationship is linear enough or if we need other ay * airspeed terms
         # same with q <- ay
+        #
+        #   Answer: p relates better to ay*vc_mps
 
-        # Note 1: from a cool perspective we can combine all the terms into a
-        # single solution, but there is too much cross coupling in our flight
-        # test data leading to weird correlations in the solution.  It makes
-        # more practical sense to separate the lateral and longitudinal axes ...
-        # Even so, there is a /lot/ of cross coupling between aileron and rudder
-        # and we may not actually want a pure system in the end.
+        # check again after data cleanup! Note 1: from a cool perspective we can
+        # combine all the terms into a single solution, but there is too much
+        # cross coupling in our flight test data leading to weird correlations
+        # in the solution.  It makes more practical sense to separate the
+        # lateral and longitudinal axes ... Even so, there is a /lot/ of cross
+        # coupling between aileron and rudder and we may not actually want a
+        # pure system in the end.
 
         # Note 2: sometimes simpler is better ... fewer terms means less of a
         # good model fit, but more terms can introduce unpredictability (or
-        # unexpectability)
+        # unexpectability)  Often additional terms add very little value.
+
+        # Note 3: Feb 4, 2025
+        # p (roll) terms: aileron*qbar, ay*vc_mps, rudder*qbar
 
         # test (3x3)
         # include_states = ["aileron*qbar", "elevator*qbar", "rudder*qbar", "one", "ay", "bgy", "vc_mps", "1/vc_mps"]
@@ -669,9 +787,14 @@ for i, cond in enumerate(conditions):
         # output_states = ["p", "r"]
         # parameter_fit_1(traindata, train_states, include_states, output_states, self_reference=False)
 
-        # pbeta
+        # p-beta
         # include_states = ["aileron*qbar", "rudder*qbar", "one", "ay", "bgy", "vc_mps", "1/vc_mps"]
         # output_states = ["p", "beta_deg"]
+        # parameter_fit_1(traindata, train_states, include_states, output_states, self_reference=False)
+
+        # p-ay
+        # include_states = ["aileron*qbar", "rudder*qbar", "one", "bgy", "vc_mps", "1/vc_mps"]
+        # output_states = ["p", "ay"]
         # parameter_fit_1(traindata, train_states, include_states, output_states, self_reference=False)
 
         # pr
@@ -679,7 +802,34 @@ for i, cond in enumerate(conditions):
         # output_states = ["p", "r"]
         # parameter_fit_1(traindata, train_states, include_states, output_states, self_reference=False)
 
+        # q (old, better fit, but the ay terms imply a correlation with turning
+        #    which may only be there because that's how pilots fly planes, not
+        #    because these parameters are physically correlated.)
+        # include_states = ["elevator*qbar", "one", "ay", "abs(ay)", "bgy", "vc_mps", "1/vc_mps"]
+        # output_states = ["q"]
+        # parameter_fit_1(traindata, train_states, include_states, output_states, self_reference=False)
+
         # q
-        include_states = ["elevator*qbar", "one", "ay", "abs(ay)", "bgy", "vc_mps", "1/vc_mps"]
-        output_states = ["q"]
+        include_states = ["elevator*qbar"]                     # control terms
+        include_states += ["one", "qbar"]
+        include_states += ["alpha_deg*qbar", "beta_deg*qbar"]  # stability terms
+        output_states = ["q"]                                  # pitch rate
         parameter_fit_1(traindata, train_states, include_states, output_states, self_reference=False)
+
+        # az
+        # include_states = ["one", "q*qbar", "elevator*qbar", "elevator*vc_mps", "elevator"]
+        # output_states = ["az"]
+        # parameter_fit_1(traindata, train_states, include_states, output_states, self_reference=False)
+
+        # pqr group damper
+        # include_states = ["aileron*qbar", "elevator*qbar", "rudder*qbar", "one"]
+        # output_states = ["p", "q", "r"]
+        # parameter_fit_1(traindata, train_states, include_states, output_states, self_reference=False)
+
+        # alpha
+        # include_states = ["one", "elevator", "bgx", "1/qbar"]
+        # include_states = ["one", "1/qbar", "az", "q", "elevator"]
+        # include_states = ["one", "q", "qbar", "bgx", "az"]
+        # include_states = ["one", "az/qbar"]
+        # output_states = ["alpha_deg"]
+        # parameter_fit_1(traindata, train_states, include_states, output_states, self_reference=False)
