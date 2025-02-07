@@ -12,7 +12,7 @@ Engineering and Mechanics, UAV Lab.
 """
 
 import argparse
-import dask.array as da         # dnf install python3-dask+array
+import dask.array as da         # dnf install python3-dask+array / pip install dask
 from matplotlib import pyplot as plt
 import numpy as np
 
@@ -53,7 +53,7 @@ inertial_terms = [
     "ay",                 # side force
     "ay^2", "ay*vc_mps", "ay*qbar",
     "az",                 # lift
-    "az/qbar",
+    "ay/qbar", "az/qbar",
     "bgx", "bgy", "bgz",  # gravity rotated into body frame
     "abs(ay)", "abs(bgy)",
     "q_term1",            # pitch bias in level turn
@@ -614,7 +614,7 @@ for i, cond in enumerate(conditions):
     if False and False:
         mass_solution_4(traindata, train_states, output_states, self_reference=True)
 
-    if False:
+    if True:
         # Parameter predictionive correlation: these are the things we want to
         # control, this will find the most important "predictive" correlations,
         # hopefully some external input (inceptor, control surface, etc.)
@@ -651,22 +651,22 @@ for i, cond in enumerate(conditions):
 
         include_states = ["one"]
 
-        # y_state = "dp"  # fit states: ail*qbar, rud*qbar, ay
+        # y_state = "p"  # fit states: ail*qbar, rud*qbar, ay
         # exclude_states = ["p", "p*vc_mps", "p*qbar", "rudder*vc_mps"]
 
-        y_state = "q"                                         # pitch rate change
-        include_states += ["alpha_deg*qbar", "beta_deg*qbar"]  # stability terms
-        include_states += ["elevator*qbar"]                    # control terms
-                                                               # ignoring dynamic terms (delta_q_hat, delta_alpha)
-        exclude_states = ["q", "q*qbar", "q*vc_mps"]
+        # y_state = "q"                                          # pitch rate change
+        # include_states += ["alpha_deg*qbar", "beta_deg*qbar"]  # stability terms
+        # include_states += ["elevator*qbar"]                    # control terms
+        #                                                        # ignoring dynamic terms (delta_q_hat, delta_alpha)
+        # exclude_states = ["q", "q*qbar", "q*vc_mps"]
 
         # bgy (roll angle) correlates very well (too well?) with yaw rate
-        # y_state = "dr"
+        # y_state = "r"
         # exclude_states = ["r*vc_mps", "r*qbar"]
 
         # no good correlators with beta
-        # y_state = "beta_deg"
-        # exclude_states = ["beta_deg*vc_mps", "beta_deg*qbar"]
+        y_state = "beta_deg"
+        exclude_states = ["beta_deg*vc_mps", "beta_deg*qbar"]
 
         # y_state = "ay"
         # include_states = ["aileron*qbar", "rudder*qbar", "one", "bgy"]
@@ -810,11 +810,11 @@ for i, cond in enumerate(conditions):
         # parameter_fit_1(traindata, train_states, include_states, output_states, self_reference=False)
 
         # q
-        include_states = ["elevator*qbar"]                     # control terms
-        include_states += ["one", "qbar"]
-        include_states += ["alpha_deg*qbar", "beta_deg*qbar"]  # stability terms
-        output_states = ["q"]                                  # pitch rate
-        parameter_fit_1(traindata, train_states, include_states, output_states, self_reference=False)
+        # include_states = ["elevator*qbar"]                     # control terms
+        # include_states += ["one", "qbar"]
+        # include_states += ["alpha_deg*qbar", "beta_deg*qbar"]  # stability terms
+        # output_states = ["q"]                                  # pitch rate
+        # parameter_fit_1(traindata, train_states, include_states, output_states, self_reference=False)
 
         # az
         # include_states = ["one", "q*qbar", "elevator*qbar", "elevator*vc_mps", "elevator"]
@@ -833,3 +833,9 @@ for i, cond in enumerate(conditions):
         # include_states = ["one", "az/qbar"]
         # output_states = ["alpha_deg"]
         # parameter_fit_1(traindata, train_states, include_states, output_states, self_reference=False)
+
+        # beta
+        include_states = ["ay/qbar"]
+        include_states += ["one"]
+        output_states = ["beta_deg"]
+        parameter_fit_1(traindata, train_states, include_states, output_states, self_reference=False)

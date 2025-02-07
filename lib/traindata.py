@@ -1,7 +1,7 @@
 from math import cos, pi, sin
 import numpy as np
 import os
-import hickle  # pip install hickle; # pickle into hdf5 format
+import hickle  # pip install hickle; # (pickle data into hdf5 format)
 from tqdm import tqdm
 
 from flightdata import flight_loader, flight_interp

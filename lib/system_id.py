@@ -42,7 +42,7 @@ computational effort.
 
 """
 
-import dask.array as da         # dnf install python3-dask+array
+import dask.array as da         # dnf install python3-dask+array / pip install dask
 from matplotlib import pyplot as plt
 import numpy as np
 

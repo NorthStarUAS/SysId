@@ -16,7 +16,7 @@ import json
 from math import cos, pi, sin
 from matplotlib import pyplot as plt
 import numpy as np
-from tqdm import tqdm
+from tqdm import tqdm  # pip install tqdm
 
 from flightdata import flight_loader, flight_interp
 
