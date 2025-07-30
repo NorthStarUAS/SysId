@@ -48,12 +48,14 @@ inertial_terms = [
     "p", "q", "r",        # imu (body) rates
     "dp", "dq", "dr",
     "p*qbar", "q*qbar", "r*qbar",        # imu (body) rates
+    "q/qbar",  # test related to az?
     "p*vc_mps", "q*vc_mps", "r*vc_mps",        # imu (body) rates
     "ax",                 # thrust - drag
     "ay",                 # side force
     "ay^2", "ay*vc_mps", "ay*qbar",
     "az",                 # lift
     "ay/qbar", "az/qbar",
+    "az/vc_mps",          # related to q
     "bgx", "bgy", "bgz",  # gravity rotated into body frame
     "abs(ay)", "abs(bgy)",
     "q_term1",            # pitch bias in level turn
@@ -87,6 +89,7 @@ inceptor_airdata_terms = [
     "elevator*qbar", "elevator*vc_mps", # "elevator*qbar_1", "elevator*qbar_2", "elevator*qbar_3",
     "rudder*qbar", "rudder*vc_mps",     # "rudder*qbar_1", "rudder*qbar_2", "rudder*qbar_3",
     "abs(rudder)*qbar",
+    "throttle/vc_mps", "throttle/qbar", "throttle*qbar"
 ]
 
 inertial_airdata_terms = [
@@ -147,12 +150,13 @@ for i, s in enumerate(train_states):
 print("Previous state propagation:", propagate)
 
 # state_mgr.set_is_flying_thresholds(15*kt2mps, 10*kt2mps) # bob ross
-state_mgr.set_is_flying_thresholds(75*kt2mps, 65*kt2mps) # sr22
+# state_mgr.set_is_flying_thresholds(75*kt2mps, 65*kt2mps) # sr22
+state_mgr.set_is_flying_thresholds(10*kt2mps, 15*kt2mps) # skywalker
 
 train_data = TrainData()
 train_data.load_flightdata(args.flight, args.vehicle, args.invert_elevator, args.invert_rudder, state_mgr, conditions, train_states)
 
-print(train_data.cond_list[0].shape)
+print("train_data.cond_list[0].shape:", train_data.cond_list[0].shape)
 # train_data.cond_list[0] = np.delete(train_data.cond_list[0], slice(526889,527132), axis=1)
 # train_data.cond_list[0] = np.delete(train_data.cond_list[0], slice(526406,526650), axis=1)
 # train_data.cond_list[0] = np.delete(train_data.cond_list[0], slice(520869,521115), axis=1)
@@ -176,15 +180,15 @@ for i, cond in enumerate(conditions):
 from scipy import signal
 def do_filter(traindata, dt):
     print("filter...", dt)
-    cutoff_freq = 5
+    cutoff_freq = 3
     b, a = signal.butter(4, cutoff_freq, 'low', fs=(1/dt), output='sos', analog=False)
     print(b,a)
     for i in range(len(traindata)):
         print(i)
         x = traindata[i,:]
         print(x.shape)
-        print("any nan's?:", np.isnan(x).any())
-        print("any inf's?:", np.isinf(x).any())
+        # print("any nan's?:", np.isnan(x).any())
+        # print("any inf's?:", np.isinf(x).any())
         # need to use filtfilt here to avoid phase loss
         # filt = signal.filtfilt(b, a, x, method="gust")
         filt = signal.sosfilt((b, a), x)
@@ -248,6 +252,38 @@ def solve(traindata, includes_idx, solutions_idx):
     print("Y:", Y.shape)
     print("X:\n", np.array(X))
     print("Y:\n", np.array(Y))
+
+    if False:
+        # knock out the noise around zero in the solution space
+        max = np.max(Y)
+        min = np.min(Y)
+        mean = np.mean(Y)
+        diff = max - min
+        cutoff = max * 0.25
+        a = np.abs(Y-mean)>=cutoff
+        a = np.squeeze(np.asarray(a))
+        print(a.shape, a)
+
+        X = X[:,a]
+        Y = Y[:,a]
+        print("X1:", X.shape)
+        print("Y1:", Y.shape)
+        print("X1:\n", np.array(X))
+        print("Y1:\n", np.array(Y))
+
+    # for x in range(X.shape[0]):
+    #     plt.figure()
+    #     plt.plot(traindata[train_states.index(x)], label=train_states[train_states.index(x)])
+    #     plt.legend()
+
+    #     plt.figure()
+    #     plt.plot(traindata[train_states.index(output_states[0])], traindata[train_states.index(x)], ',', label=train_states[train_states.index(x)])
+    #     plt.legend()
+
+    # for x in output_states:
+    #     plt.figure()
+    #     plt.plot(traindata[train_states.index(x)], label=train_states[train_states.index(x)])
+    #     plt.legend()
 
     # Y = A * X, solve for A
     #
@@ -531,6 +567,7 @@ def parameter_fit_1(traindata, train_states, input_states, output_states, self_r
     # plt.show()
 
     for x in input_states:
+        print("input_state:", x)
         input_idx.append(train_states.index(x))
         plt.figure()
         plt.plot(traindata[train_states.index(x)], label=train_states[train_states.index(x)])
@@ -605,7 +642,7 @@ for i, cond in enumerate(conditions):
         corr = np.corrcoef(traindata)
         print("corr:\n", corr)
 
-    if True:
+    if False:
         do_filter(traindata, dt)
 
     # sysid = SystemIdentification(args.vehicle)
@@ -614,7 +651,7 @@ for i, cond in enumerate(conditions):
     if False and False:
         mass_solution_4(traindata, train_states, output_states, self_reference=True)
 
-    if True:
+    if False:
         # Parameter predictionive correlation: these are the things we want to
         # control, this will find the most important "predictive" correlations,
         # hopefully some external input (inceptor, control surface, etc.)
@@ -651,25 +688,43 @@ for i, cond in enumerate(conditions):
 
         include_states = ["one"]
 
-        # y_state = "p"  # fit states: ail*qbar, rud*qbar, ay
+        # note there exist dynamic terms which we are ignoring
+
+        # y_state = "p"                                                      # roll rate
+        # include_states += ["aileron*qbar", "elevator*qbar", "rudder*qbar"] # control terms
+        # # include_states += ["alpha_deg*qbar", "beta_deg*qbar"]              # stability terms
+        # include_states += ["az/qbar", "ay/qbar"]              # proxy stability terms
         # exclude_states = ["p", "p*vc_mps", "p*qbar", "rudder*vc_mps"]
 
-        # y_state = "q"                                          # pitch rate change
-        # include_states += ["alpha_deg*qbar", "beta_deg*qbar"]  # stability terms
-        # include_states += ["elevator*qbar"]                    # control terms
-        #                                                        # ignoring dynamic terms (delta_q_hat, delta_alpha)
-        # exclude_states = ["q", "q*qbar", "q*vc_mps"]
+        # y_state = "q"                                                      # pitch rate
+        # # include_states += ["aileron*qbar", "elevator*qbar", "rudder*qbar"] # control terms
+        # # include_states += ["alpha_deg*qbar", "beta_deg*qbar"]              # stability terms
+        # # include_states += ["az/qbar", "ay/qbar"]              # proxy stability terms
+        # exclude_states = ["q", "q*qbar", "q/qbar", "q*vc_mps", "bgz", "q_term1", "abs(bgy)", "dq", "alpha_deg", "alpha_deg*qbar", "beta_deg", "ay^2",
+        #                   "elevator*qbar", "elevator*vc_mps", "elevator", "ax", "bgx", "alpha_deg*vc_mps"]
+
+        # y_state = "r"                                                      # yaw rate
+        # include_states += ["aileron*qbar", "elevator*qbar", "rudder*qbar"] # control terms
+        # include_states += ["alpha_deg*qbar", "beta_deg*qbar"]              # stability terms
+        # include_states += ["az/qbar", "ay/qbar"]              # proxy stability terms
+        # exclude_states = ["r", "r*qbar", "r*vc_mps"]
 
         # bgy (roll angle) correlates very well (too well?) with yaw rate
         # y_state = "r"
         # exclude_states = ["r*vc_mps", "r*qbar"]
 
         # no good correlators with beta
-        y_state = "beta_deg"
-        exclude_states = ["beta_deg*vc_mps", "beta_deg*qbar"]
+        # y_state = "beta_deg"
+        # exclude_states = ["beta_deg*vc_mps", "beta_deg*qbar"]
 
         # y_state = "ay"
-        # include_states = ["aileron*qbar", "rudder*qbar", "one", "bgy"]
+        # include_states = ["aileron*qbar", "rudder*qbar", "bgy"]
+        # exclude_states = ["beta_deg*vc_mps", "beta_deg*qbar"]
+        # exclude_states = ["ay*vc_mps", "ay*qbar", "ay^2", "abs(ay)", "ax", "az"]
+
+        y_state = "elevator"
+        include_states += []
+        exclude_states = ["elevator*vc_mps", "elevator", "elevator*qbar", "alpha_deg", "beta_deg", "bgz", "bgx", "bgy", "r", "r*vc_mps", "r*qbar"]
         # exclude_states = ["beta_deg*vc_mps", "beta_deg*qbar"]
         # exclude_states = ["ay*vc_mps", "ay*qbar", "ay^2", "abs(ay)", "ax", "az"]
 
@@ -741,7 +796,7 @@ for i, cond in enumerate(conditions):
         # unknowns.  We can evaluate/sum/collapse the remaining terms into a
         # single vector [b1, b2, b3] because we know the current state values.
         #
-        # This gives us:
+        # This gives us:  THIS MATH IS SUSPECT!
         #
         #   [ p    ]   [ a11 a12 a13 ] [ ail*qbar ]   [ b11 b12 ... b1n ] [ p1  ]
         #   [ q    ] = [ a21 a22 a23 ]*[ ele*qbar ] + [ b21 b22 ... b2n ]*[ p2  ]
@@ -826,16 +881,93 @@ for i, cond in enumerate(conditions):
         # output_states = ["p", "q", "r"]
         # parameter_fit_1(traindata, train_states, include_states, output_states, self_reference=False)
 
-        # alpha
-        # include_states = ["one", "elevator", "bgx", "1/qbar"]
-        # include_states = ["one", "1/qbar", "az", "q", "elevator"]
-        # include_states = ["one", "q", "qbar", "bgx", "az"]
-        # include_states = ["one", "az/qbar"]
+        # new work: Feb 7, 2025 (ignoring dynamics terms)
+        include_states = ["one"]
+
+        # inertial alpha estimate
+        # ## include_states = ["one", "elevator", "bgx", "1/qbar"]
+        # ## include_states = ["one", "1/qbar", "az", "q", "elevator"]
+        # ## include_states = ["one", "q", "qbar", "bgx", "az"]
+        # include_states += ["az/qbar"]
         # output_states = ["alpha_deg"]
         # parameter_fit_1(traindata, train_states, include_states, output_states, self_reference=False)
 
-        # beta
-        include_states = ["ay/qbar"]
-        include_states += ["one"]
-        output_states = ["beta_deg"]
+        # For Envelope Protection: what az gives us our 'max' allowable alpha?
+        #
+        # inverse inertial alpha estimate: az = f(alpha*qbar) (not no "one"
+        # constant term, because... reasons ... inverting the forward estimate
+        # doesn't lead to a constant term)
+        # include_states = ["qbar", "alpha_deg*qbar"]
+        # output_states = ["az"]
+        # parameter_fit_1(traindata, train_states, include_states, output_states, self_reference=False)
+
+        # inertial beta estimate
+        # include_states = ["ay/qbar"]
+        # include_states += ["one"]
+        # output_states = ["beta_deg"]
+        # parameter_fit_1(traindata, train_states, include_states, output_states, self_reference=False)
+
+        # output_states = ["p"]                                               # roll rate
+        # include_states += ["aileron*qbar", "elevator*qbar", "rudder*qbar"]  # control terms
+        # include_states += ["az/qbar", "ay/qbar"]                            # proxy stability terms
+        # parameter_fit_1(traindata, train_states, include_states, output_states, self_reference=False)
+
+        # what if we fit directly rather than inversely and solved afterwards
+        # (we can do this because we aren't considering any time sequencing/lag
+        # states in the data)
+
+        # output_states = ["aileron*qbar"]                    # roll rate
+        # include_states += ["p"]                             # the main input we want to achieve
+        # include_states += ["elevator*qbar", "rudder*qbar", "throttle*qbar"]  # control terms
+        # include_states += ["ay", "az"]                      # proxy stability terms
+        # parameter_fit_1(traindata, train_states, include_states, output_states, self_reference=False)
+
+        # output_states = ["elevator*qbar"]
+        # include_states += ["q"]                                                      # pitch rate
+        # include_states += ["abs(aileron)*qbar", "abs(rudder)*qbar"] # control terms
+        # include_states += ["abs(ay)", "az"]              # proxy stability terms
+        # parameter_fit_1(traindata, train_states, include_states, output_states, self_reference=False)
+
+        # psuedo-beta
+        # output_states = ["rudder*qbar"]
+        # include_states += ["ay*qbar"]                                                      # proxy beta angle
+        # include_states += ["aileron*qbar", "elevator*qbar"] # control terms
+        # include_states += ["ay", "az"]                              # proxy stability terms
+        # parameter_fit_1(traindata, train_states, include_states, output_states, self_reference=False)
+
+        # yaw rate (explicitely do not include non-symetric terms)
+        # output_states = ["rudder*qbar"]
+        # include_states += ["r"]                                                      # yaw rate
+        # # include_states += ["aileron*qbar"] # control terms
+        # include_states += ["ay"]                              # proxy stability terms
+        # parameter_fit_1(traindata, train_states, include_states, output_states, self_reference=False)
+
+        # # load factor controller
+        # output_states = ["elevator"]
+        # include_states += ["az/qbar", "throttle"] # 1/qbar also correlates linearly ... Chris said there should be an inverse speed term in there, but this doesn't help the fit get tighter.
+        # # include_states += ["abs(aileron)*qbar", "abs(rudder)*qbar"] # control terms
+        # # include_states += ["abs(ay)", "az"]              # proxy stability terms
+        # parameter_fit_1(traindata, train_states, include_states, output_states, self_reference=False)
+
+        # another experiment for skywalker
+        output_states = ["p", "ay"]
+        include_states += ["aileron*qbar", "rudder*qbar"] # primary
+        include_states += ["elevator*qbar", "throttle*qbar"] # secondary
+        include_states += ["az", "r"]                      # proxy alpha/beta terms
         parameter_fit_1(traindata, train_states, include_states, output_states, self_reference=False)
+
+        output_states = ["aileron*qbar", "rudder*qbar"]
+        include_states += ["p", "r"]
+        include_states += ["throttle*qbar"]
+        include_states += ["az", "ay"]                      # proxy alpha/beta terms
+        parameter_fit_1(traindata, train_states, include_states, output_states, self_reference=False)
+
+        # q vs az?
+        # output_states = ["q"]
+        # include_states += ["az/vc_mps", "1/vc_mps"]
+        # parameter_fit_1(traindata, train_states, include_states, output_states, self_reference=False)
+
+        # az vs. q?
+        # output_states = ["az"]
+        # include_states += ["q/qbar"]
+        # parameter_fit_1(traindata, train_states, include_states, output_states, self_reference=False)

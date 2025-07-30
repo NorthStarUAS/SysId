@@ -315,6 +315,12 @@ class StateManager():
             # Inceptors
             if field == "throttle":
                 val = self.throttle[n]
+            elif field == "throttle/vc_mps":
+                val = self.throttle[n] / self.vc_mps
+            elif field == "throttle/qbar":
+                val = self.throttle[n] / self.qbar
+            elif field == "throttle*qbar":
+                val = self.throttle[n] * self.qbar
             elif field == "aileron":
                 val = self.aileron[n]
             elif field == "elevator":
@@ -433,6 +439,8 @@ class StateManager():
                 val = self.gyros[n][0]*self.qbar
             elif field == "q*qbar":
                 val = self.gyros[n][1]*self.qbar
+            elif field == "q/qbar":
+                val = self.gyros[n][1]/self.qbar
             elif field == "r*qbar":
                 val = self.gyros[n][2]*self.qbar
             elif field == "p*vc_mps":
@@ -441,7 +449,6 @@ class StateManager():
                 val = self.gyros[n][1]*self.vc_mps
             elif field == "r*vc_mps":
                 val = self.gyros[n][2]*self.vc_mps
-
             elif field == "ax":
                 val = self.accels[n][0]
             elif field == "ay":
@@ -460,6 +467,8 @@ class StateManager():
                 val = abs(self.accels[n][1])
             elif field == "az":
                 val = self.accels[n][2]
+            elif field == "az/vc_mps":  # related to q
+                val = self.accels[n][2] / self.vc_mps
             elif field == "az/qbar":
                 val = self.accels[n][2] / self.qbar
             elif field == "one":

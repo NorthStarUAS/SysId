@@ -145,7 +145,10 @@ class TrainData():
                 if "effectors" in record:
                     actpt = record["effectors"]
                     if vehicle == "wing":
-                        state_mgr.set_throttle( actpt["power"] )
+                        if "power" in actpt:
+                            state_mgr.set_throttle( actpt["power"] )
+                        else:
+                            state_mgr.set_throttle( actpt["throttle"] )
                         ail = actpt["aileron"]
                         ele = actpt["elevator"]
                         rud = actpt["rudder"]
@@ -197,10 +200,21 @@ class TrainData():
                         print("%.2f %.2f" % (wn, we))
                 if "nav" in record:
                     navpt = record["nav"]
-                    psi = navpt["psi_deg"] * d2r
+                    if "phi_deg" in navpt:
+                        phi = navpt["phi_deg"] * d2r
+                    else:
+                        phi = navpt["roll_deg"] * d2r
+                    if "theta_deg" in navpt:
+                        theta = navpt["theta_deg"] * d2r
+                    else:
+                        theta = navpt["pitch_deg"] * d2r
+                    if "psi_deg" in navpt:
+                        psi = navpt["psi_deg"] * d2r
+                    else:
+                        psi = navpt["yaw_deg"] * d2r
                     if psi_bias is not None:
                         psi += psi_bias
-                    state_mgr.set_orientation( navpt["phi_deg"]*d2r, navpt["theta_deg"]*d2r, navpt["psi_deg"]*d2r )
+                    state_mgr.set_orientation( phi, theta, psi )
                     state_mgr.set_pos(navpt["longitude_deg"], navpt["latitude_deg"], navpt["altitude_m"])
                     if vehicle == "wing" or np.linalg.norm([navpt["vn"], navpt["ve"], navpt["vd"]]) > 0.000001:
                         state_mgr.set_ned_velocity( navpt["vn_mps"], navpt["ve_mps"],
