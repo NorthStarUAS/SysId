@@ -942,17 +942,25 @@ for i, cond in enumerate(conditions):
         # include_states += ["ay"]                              # proxy stability terms
         # parameter_fit_1(traindata, train_states, include_states, output_states, self_reference=False)
 
-        # # load factor controller
-        # output_states = ["elevator"]
-        # include_states += ["az/qbar", "throttle"] # 1/qbar also correlates linearly ... Chris said there should be an inverse speed term in there, but this doesn't help the fit get tighter.
-        # # include_states += ["abs(aileron)*qbar", "abs(rudder)*qbar"] # control terms
-        # # include_states += ["abs(ay)", "az"]              # proxy stability terms
+        ## experiments for the skywalker
+
+        # load factor controller
+        output_states = ["elevator"]
+        include_states += ["az/qbar", "throttle"] # 1/qbar also correlates linearly ... Chris said there should be an inverse speed term in there, but this doesn't help the fit get tighter.
+        # include_states += ["abs(aileron)*qbar", "abs(rudder)*qbar"] # control terms
+        # include_states += ["abs(ay)", "az"]              # proxy stability terms
+        parameter_fit_1(traindata, train_states, include_states, output_states, self_reference=False)
+
+        # # just roll axis
+        # output_states = ["p"]
+        # include_states += ["aileron*qbar"] # primary
+        # include_states += ["rudder*qbar", "throttle*qbar"] # primary
+        # include_states += ["az", "ay"]                     # proxy alpha/beta terms
         # parameter_fit_1(traindata, train_states, include_states, output_states, self_reference=False)
 
-        # another experiment for skywalker
         output_states = ["p", "ay"]
         include_states += ["aileron*qbar", "rudder*qbar"] # primary
-        include_states += ["elevator*qbar", "throttle*qbar"] # secondary
+        include_states += ["throttle*qbar"] # secondary
         include_states += ["az", "r"]                      # proxy alpha/beta terms
         parameter_fit_1(traindata, train_states, include_states, output_states, self_reference=False)
 
