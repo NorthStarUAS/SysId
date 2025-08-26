@@ -5,6 +5,9 @@ import re
 # No escaped characters, illegal: "abc\"def\"ghi", ok: 'abc"def"ghi'
 # 'abc' and "abc" are legal string literals
 # integers and floating point numbers are standard as expected
+# reserved keywords for langauge syntax
+# boolean "and" and "or" are spelled out, not handled with c++ style operators.
+# not bit-wise operations at this point
 
 
 class Tokenator():
@@ -31,7 +34,7 @@ class Tokenator():
     def set_input_file(self, file_name):
         with open(file_name, "r") as f:
             self.input_string = f.read()
-            self.reset
+            self.reset()
 
     def next_token(self):
         input = self.input_string[self.character_index:]
@@ -65,6 +68,14 @@ class Tokenator():
         if input == "":
             return None
 
+        # comment
+        pattern = r"^#.*" # comment
+        x = re.search(pattern, input)
+        if x is not None:
+            comment = x.group()
+            self.update_index(x)
+            return "comment", comment
+
         # floating point number variations
         pattern1 = r"^[+-]?\d+\.\d+" # -1.2
         pattern2 = r"^[+-]?\d+\."    # -1.
@@ -92,14 +103,14 @@ class Tokenator():
             self.update_index(x)
             return "int_number", int_number
 
-        # string constants with "
+        # string constants with " (double quotes)
         x = re.search("^\".*?\"", input)
         if x is not None:
             string_constant = x.group()
             self.update_index(x)
             return "string_constant", string_constant[1:-1]
 
-        # string constants with '
+        # string constants with ' (single quotes)
         x = re.search("^'.*?'", input)
         if x is not None:
             string_constant = x.group()
@@ -107,7 +118,7 @@ class Tokenator():
             return "string_constant", string_constant[1:-1]
 
         # multi-character operators
-        for pattern in ["<=", ">=", "==", "\+=", "-=", "\*=", "/="]:
+        for pattern in ["<=", ">=", "==", "!=", "\+=", "-=", "\*=", "/="]:
             rep = "^" + pattern
             # print("pattern:", rep)
             x = re.search(rep, input)
@@ -117,13 +128,13 @@ class Tokenator():
                 return "operator", operator
 
         # single character operators
-        patterns = [":", "(", ")", "[", "]", ">", "<", "=", "+", "-", "*", "/", "^", "|", "&"]
+        patterns = [":", ",", "(", ")", "[", "]", "{", "}", ">", "<", "=", "+", "-", "*", "/", "^", "%", "|", "&", "."]
         if input[0] in patterns:
             self.character_index += 1
             return "operator", input[0]
 
-        # key words
-        for pattern in ["if", "elif", "else", "def", "return", "and", "or"]:
+        # reserved keywords
+        for pattern in ["if", "elif", "else", "def", "return", "and", "or", "True", "False"]:
             rep = "^" + pattern
             # print("rep:", rep)
             x = re.search(rep, input)
@@ -157,9 +168,19 @@ if a + b:
 elif d >= n:
    z = 5.0e-5 / (5 ^ 5)
 else:
-   x = 42
+   x_25 = 42
+
+def my_function(a, b=3, c=None):
+    return a + b
+
 """
     tokenator.set_input_string(input)
+    t = tokenator.next_token()
+    while t is not None:
+        print("line:", tokenator.line_number, t)
+        t = tokenator.next_token()
+
+    tokenator.set_input_file("lib/state_mgr.py")
     t = tokenator.next_token()
     while t is not None:
         print("line:", tokenator.line_number, t)
