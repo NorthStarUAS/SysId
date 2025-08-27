@@ -5,9 +5,6 @@ from sly import Lexer
 class Tokenator(Lexer):
     # Set of token names.   This is always required
     tokens = {
-              # Symbols
-              ID,
-
               # Literals
               FLOAT, INTEGER, STRING, BOOL,
 
@@ -22,13 +19,20 @@ class Tokenator(Lexer):
 
               # Syntax
               COMMA, COLON, PIPE,
+              LEADING_INDENT, COMMENT,
+
+              # Symbols
+              ID,
+
+              # Keywords
+              IF, ELIF, ELSE
+
             }
 
     # String containing ignored characters between tokens
-    ignore = ' \t'
+    # ignore = ' \t'
 
     # Regular expression rules for tokens
-    ID      = r'[a-zA-Z_][a-zA-Z0-9_]*'
     TIMES   = r'\*'
     DIVIDE  = r'/'
     PLUS    = r'\+'
@@ -47,20 +51,34 @@ class Tokenator(Lexer):
     COLON   = r':'
     PIPE    = r'\|'
 
-    # Define a rule so we can track line numbers
-    @_(r'\n+')
-    def ignore_newline(self, t):
-        self.lineno += len(t.value)
-        print("line:", self.lineno)
+    ID      = r'[a-zA-Z_][a-zA-Z0-9_]*'
+    ID["if"] = IF
+    ID["elif"] = ELIF
+    ID["else"] = ELSE
+
+    # # Define a rule so we can track line numbers
+    # @_(r'\n+')
+    # def ignore_newline(self, t):
+    #     self.lineno += len(t.value)
+    #     print("line:", self.lineno)
+
+    # # Define a rule so we can track line numbers
+    @_(r'\n[ \t]*')
+    def LEADING_INDENT(self, t):
+        self.lineno += 1
+        print("indent:", len(t.value)-1, "line:", self.lineno)
 
     # Floating point literals.  ex: 1.23, 1.23e1, 1.23e+1, 1.23e-1, 123., .123, 1e1, 0.
-    @_(r'\d+[eE][-+]?\d+|(\.\d+|\d+\.\d*)([eE][-+]?\d+)?')
+    @_(r'\d+[eE][-+]?\d+',
+       r'(\.\d+|\d+\.\d*)([eE][-+]?\d+)?')
     def FLOAT(self, t):
         t.value = float(t.value)
         return t
 
     # Integer literals. ex: 1234, 0x12AF, 0177
-    @_(r'0[Xx][\dA-Fa-f]+|0[0-7]+|\d+')
+    @_(r'0[Xx][\dA-Fa-f]+',
+       r'0[0-7]+',
+       r'\d+')
     def INTEGER(self, t):
         if t.value.startswith("0x") or t.value.startswith("0X"):
             print("hex literal:", t.value)
@@ -75,8 +93,19 @@ class Tokenator(Lexer):
         return t
 
     # String literals. ex: "abc 'd' efg", 'abc "d" efg'
-    @_(r'\".*?\"|\'.*?\'')
+    @_(r'\".*?\"',
+       r'\'.*?\'')
     def STRING(self, t):
+        return t
+
+    # Whitespace indent (python style)
+    @_(r'[ \t]+')
+    def INDENT(self, t):
+        return t
+
+    # Comment (python / bash style)
+    @_(r'\#.*')
+    def COMMENT(self, t):
         return t
 
 if __name__ == '__main__':
@@ -85,13 +114,19 @@ if __name__ == '__main__':
 """
 1.23
 0x45 01234 08234
-1. .2 1.2 1.e-4 .2e6 2.3e-97 42
 
+
+
+1. .2 1.2 1.e-4 .2e6 2.3e-97 42
+     # indented comment
+# comment
 1 2 +3 -4 +7872098 -123456 987654321
 "abc" "g'h'i" "def" 'jk"lm"no'
-+ - : >= ">=" / | += *= ^
++ - : >= ">=" / | += *= ^    # comment to end of line
 
-if a + b:
+# comment
+
+if a + b:    # comment
    y = a or (b and c)
 elif d >= n:
    z = 5.0e-5 / (5 ^ 5)
@@ -102,6 +137,6 @@ def my_function(a, b=3, c=None):
     return a + b
 
 """
-    lexer = Tokenator()
-    for tok in lexer.tokenize(data):
-        print('type=%r, value=%r' % (tok.type, tok.value))
+    tokenator = Tokenator()
+    for token in tokenator.tokenize(data):
+        print('type=%r, value=%r' % (token.type, token.value), token)
