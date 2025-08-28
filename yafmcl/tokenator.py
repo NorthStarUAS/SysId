@@ -69,7 +69,7 @@ class Tokenator():
             return None
 
         # comment
-        pattern = r"^#.*" # comment
+        pattern = r"^\#.*" # comment
         x = re.search(pattern, input)
         if x is not None:
             comment = x.group()
@@ -157,6 +157,7 @@ if __name__ == "__main__" and __package__ is None:
     tokenator = Tokenator()
     input = \
 """
+0x45
 1. .2 1.2 1.e-4 .2e6 2.3e-97 42
 
 1 2 +3 -4 +7872098 -123456 987654321
