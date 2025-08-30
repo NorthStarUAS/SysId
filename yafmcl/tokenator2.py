@@ -16,7 +16,7 @@ class Tokenator(Lexer):
               TIMES, DIVIDE, PLUS, MINUS, EXPONENT,
 
               # Boolean
-              EQ, NE, GTE, LTE, GT, LT,
+              EQ, NE, GTE, LTE, GT, LT, NOT,
 
               # Expressions
               ASSIGN, LPAREN, RPAREN,
@@ -48,6 +48,7 @@ class Tokenator(Lexer):
     LTE     = r'<='
     GT      = r'>'
     LT      = r'<'
+    NOT     = r'\!'
     ASSIGN  = r'='
     LPAREN  = r'\('
     RPAREN  = r'\)'
