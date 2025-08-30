@@ -40,6 +40,7 @@ class Parser():
             self.advance()
             return True
         else:
+            print("match failed:", tokens)
             return False
 
     def check(self, tokens):
@@ -49,20 +50,42 @@ class Parser():
             return False
 
     def expression(self):
-        print("expression:", self.next())
-        return self.equality()
+        # print("expression:", self.next())
+        result = self.equality()
+        print("expression:", json.dumps(result, indent="  "))
+        return result
 
     def equality(self):
-        print("equality:", self.next())
-        self.comparison()
-        while self.match(["!=", "=="]):
-            self.comparison()
+        # print("equality:", self.next())
+        left = self.comparison()
+        if self.check(['EQ', 'NEQ']):
+            result = {}
+            result["op"] = self.next().type
+            self.advance()
+            right = self.equality()
+            result["left"] = left
+            result["right"] = right
+            # print("term right:", json.dumps(left))
+        else:
+            result = left
+        # print("equality:", json.dumps(result, indent="  "))
+        return result
 
     def comparison(self):
-        print("comparison:", self.next())
-        self.term()
-        while self.match([">", ">=", "<", "<="]):
-            self.term()
+        # print("comparison:", self.next())
+        left = self.term()
+        if self.check(['GT', 'GTE', 'LT', 'LTE']):
+            result = {}
+            result["op"] = self.next().type
+            self.advance()
+            right = self.comparison()
+            result["left"] = left
+            result["right"] = right
+            # print("term right:", json.dumps(left))
+        else:
+            result = left
+        # print("comparison:", json.dumps(result, indent="  "))
+        return result
 
     def term(self):
         # print("term:", self.next())
@@ -78,14 +101,8 @@ class Parser():
             # print("term right:", json.dumps(left))
         else:
             result = left
-        print("term:", json.dumps(result, indent="  "))
+        # print("term:", json.dumps(result, indent="  "))
         return result
-
-    # def factor(self):
-    #     print("factor:", self.next())
-    #     self.unary()
-    #     while self.match(['TIMES', 'DIVIDE']):
-    #         self.unary()
 
     # recurse instead of while
     def factor(self):
@@ -99,7 +116,7 @@ class Parser():
             result["right"] = right
         else:
             result = left
-        print("factor:", result)
+        # print("factor:", result)
         return result
 
     def unary(self):
@@ -110,7 +127,7 @@ class Parser():
             result["left"] = self.unary()
         else:
             result = self.primary()
-        print("unary:", result)
+        # print("unary:", result)
         return result
 
     def primary(self):
@@ -123,7 +140,7 @@ class Parser():
             self.match(['LPAREN'])
             result = self.expression()
             self.match(['RPAREN'])
-        print("primary:", result)
+        # print("primary:", result)
         return result
 
 if __name__ == '__main__':
@@ -132,7 +149,7 @@ if __name__ == '__main__':
         e
     """
 
-    data = """a + b * -c * d / f + 2"""
+    data = """(a + b * -c * d / f + 2 <= 25 - 2 == g)"""
 
 
     lexer = Tokenator()
@@ -140,5 +157,3 @@ if __name__ == '__main__':
 
     parser = Parser(tokens)
     parser.expression()
-
-    lexer.ASSIGN
