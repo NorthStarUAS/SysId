@@ -1,6 +1,10 @@
-from sly import Lexer
+from sly import Lexer  # dnf install python3-sly
 
 # examples: https://github.com/amontalenti/compiler/blob/master/exprlex.py
+
+# python style indent syntax:
+#   https://github.com/dabeaz/ply/blob/master/example/GardenSnake/GardenSnake.py
+#   http://dalkescientific.com/writings/diary/archive/2006/08/30/gardensnake_language.html
 
 class Tokenator(Lexer):
     # Set of token names.   This is always required
@@ -67,6 +71,11 @@ class Tokenator(Lexer):
     def LEADING_INDENT(self, t):
         self.lineno += 1
         print("indent:", len(t.value)-1, "line:", self.lineno)
+
+    @_(r'[ \t]+')
+    def IGNORE_WHITESPACE(self, t):
+        print("ignored whitespace ...")
+        pass
 
     # Floating point literals.  ex: 1.23, 1.23e1, 1.23e+1, 1.23e-1, 123., .123, 1e1, 0.
     @_(r'\d+[eE][-+]?\d+',
