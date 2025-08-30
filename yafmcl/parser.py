@@ -1,5 +1,6 @@
 # an attempt to remember how to write a recursive descent parser ... wish me luck!
 
+import json
 import types
 
 from tokenator2 import Tokenator
@@ -64,42 +65,74 @@ class Parser():
             self.term()
 
     def term(self):
-        print("term:", self.next())
-        self.factor()
-        while self.match(['PLUS', 'MINUS']):
-            self.factor()
+        # print("term:", self.next())
+        left = self.factor()
+        # print("term left:", json.dumps(left))
+        if self.check(['PLUS', 'MINUS']):
+            result = {}
+            result["op"] = self.next().type
+            self.advance()
+            right = self.term()
+            result["left"] = left
+            result["right"] = right
+            # print("term right:", json.dumps(left))
+        else:
+            result = left
+        print("term:", json.dumps(result, indent="  "))
+        return result
 
+    # def factor(self):
+    #     print("factor:", self.next())
+    #     self.unary()
+    #     while self.match(['TIMES', 'DIVIDE']):
+    #         self.unary()
+
+    # recurse instead of while
     def factor(self):
-        print("factor:", self.next())
-        self.unary()
-        while self.match(['TIMES', 'DIVIDE']):
-            self.unary()
+        left = self.unary()
+        if self.check(['TIMES', 'DIVIDE']):
+            result = {}
+            result["op"] = self.next().type
+            self.advance()
+            right = self.factor()
+            result["left"] = left
+            result["right"] = right
+        else:
+            result = left
+        print("factor:", result)
+        return result
 
     def unary(self):
-        print("unary:", self.next())
-        if self.match(["!", "-"]):
-            self.unary()
+        result = {}
+        if self.check(['NOT', 'MINUS']):
+            result["op"] = self.next().type
+            self.advance()
+            result["left"] = self.unary()
         else:
-            self.primary()
+            result = self.primary()
+        print("unary:", result)
+        return result
 
     def primary(self):
-        print("primary:", self.next())
-        if self.check(['INTEGER', 'FLOAT', 'BOOLEAN', 'STRING', 'ID']):
-            result = self.next()
+        result = {}
+        if self.check(['INTEGER', 'FLOAT', 'BOOL', 'STRING', 'ID']):
+            result[self.next().type] = self.next().value
             self.advance()
         else:
+            result = {}
             self.match(['LPAREN'])
             result = self.expression()
             self.match(['RPAREN'])
+        print("primary:", result)
         return result
 
 if __name__ == '__main__':
 
-    data = """c * (a + b)
+    data = """c * (-a + b)
         e
     """
 
-    data = """a + b * c"""
+    data = """a + b * -c * d / f + 2"""
 
 
     lexer = Tokenator()
