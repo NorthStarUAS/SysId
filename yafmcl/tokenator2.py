@@ -1,4 +1,4 @@
-from sly import Lexer  # dnf install python3-sly
+from sly import Lexer  # dnf install python3-sly; pip install --break-system-packages git+https://github.com/dabeaz/sly.git
 
 # examples: https://github.com/amontalenti/compiler/blob/master/exprlex.py
 
@@ -67,7 +67,7 @@ class Tokenator(Lexer):
     #     self.lineno += len(t.value)
     #     print("line:", self.lineno)
 
-    # # Define a rule so we can track line numbers
+    # Define a rule so we can track line numbers
     @_(r'\n[ \t]*')
     def LEADING_INDENT(self, t):
         self.lineno += 1
