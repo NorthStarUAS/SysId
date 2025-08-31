@@ -5,10 +5,14 @@ import types
 
 from tokenator2 import Tokenator
 
-# statement      → assignment ( assignment )*
-# assignment     → ID ( ASSIGN expression )*
-
-# function       → ID LPAREN ( expression ( COMMA expression )* )? RPAREN
+# block          → statement
+#                | INDENT statement ( statement )* DEDENT
+# statement      → assign
+#                | function_call
+#                | conditional
+# assign         → ID ASSIGN expression
+# function_call  → ID LPAREN ( expression ( COMMA expression )* )? RPAREN
+# conditional    → IF expression COLON block ( elif expression COLON block )* ( else colon block )?
 
 # expression     → equality
 # equality       → comparison ( ( "!=" | "==" ) comparison )*
@@ -17,7 +21,8 @@ from tokenator2 import Tokenator
 # factor         → unary ( ( "/" | "*" ) unary )*
 # unary          → ( "!" | "-" ) unary
 #                | primary
-# primary        → NUMBER | STRING | ID | function | "true" | "false" | "nil"
+# primary        → NUMBER | STRING | ID | function | "true" | "false" | "nil"   # fixme true, false, nil
+#                | function_call
 #                | "(" expression ")"
 
 class Parser():
@@ -36,6 +41,7 @@ class Parser():
         else:
             result = types.SimpleNamespace()
             result.type = 'EOF'
+            result.value = None
         return result
 
     # test if next token is in the given list
@@ -53,6 +59,43 @@ class Parser():
             return True
         else:
             return False
+
+    def block(self):
+        result = {}
+        result["op"] = "BLOCK"
+        num = 0
+        if self.check('INDENT'):
+            self.advance()
+            result["statement%d" % num] = self.statement()
+            num += 1
+            while not self.check('DEDENT'):
+                result["statement%d" % num] = self.statement()
+                num +=1
+        else:
+            result["statement%d" % num] = self.statement()
+        return result
+
+    def statement(self):
+        result = {}
+        if self.check(['ID']):
+            result = self.expression()
+        elif self.check(['IF']):
+            result = self.conditional()
+        print("statement:", json.dumps(result, indent="  "))
+        return result
+
+    def assign(self):
+        if self.check(['ID']):
+            result = {}
+            result["op"] = "ASSIGN"
+            result["left"] = self.next().value
+            self.advance()
+            self.match(['ASSIGN'])
+            result["right"] = self.expression()
+            # print("term right:", json.dumps(left))
+            return result
+        else:
+            print("error")
 
     def function(self):
         result = {}
@@ -74,10 +117,26 @@ class Parser():
             print("error")
         return result
 
+    def conditional(self):
+        result = {}
+        result["op"] = "CONDITIONAL"
+        num = 0
+        self.match(['IF'])
+        result["cond%d" % num] = self.block()
+        num += 1
+        while self.check(['ELIF']):
+            self.advance()
+            result["cond%d" % num] = self.block()
+            num +=1
+        if self.check(['ELSE']):
+            self.advance()
+            result["else"] = self.block()
+        return result
+
     def expression(self):
         # print("expression:", self.next())
         result = self.equality()
-        print("expression:", json.dumps(result, indent="  "))
+        # print("expression:", json.dumps(result, indent="  "))
         return result
 
     def equality(self):
@@ -161,11 +220,13 @@ class Parser():
             result[self.next().type] = self.next().value
             self.advance()
         elif self.check(['ID']):
-            if self.next(1).type != 'LPAREN':
+            if self.next(1).type == 'ASSIGN':
+                result = self.assign()
+            elif self.next(1).type == 'LPAREN':
+                result = self.function()
+            else:
                 result[self.next().type] = self.next().value
                 self.advance()
-            else:
-                result = self.function()
         else:
             result = {}
             self.match(['LPAREN'])
@@ -184,9 +245,11 @@ if __name__ == '__main__':
 
     data = """a + sin(x) + 2*cos(y, 3-x, (4+sin(z)))"""
 
+    data = "a = a1 = a2 = b + c = d * e()"
+    data = "d = print(abc)"
 
     lexer = Tokenator()
     tokens = list( lexer.tokenize(data) )
 
     parser = Parser(tokens)
-    parser.expression()
+    parser.statement()
