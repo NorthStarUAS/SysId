@@ -30,7 +30,8 @@ class Tokenator(Lexer):
               ID,
 
               # Keywords
-              DEF, RETURN, IF, ELIF, ELSE
+              DEF, RETURN,
+              IF, ELIF, ELSE, TRUE, FALSE
 
             }
 
@@ -63,6 +64,8 @@ class Tokenator(Lexer):
     ID["if"] = IF
     ID["elif"] = ELIF
     ID["else"] = ELSE
+    ID["True"] = TRUE
+    ID["False"] = FALSE
 
     # # Define a rule so we can track line numbers
     # @_(r'\n+')

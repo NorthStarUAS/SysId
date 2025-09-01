@@ -23,8 +23,10 @@ from tokenator2 import Tokenator
 # factor         → unary ( ( "/" | "*" ) unary )*
 # unary          → ( "!" | "-" ) unary
 #                | primary
-# primary        → NUMBER | STRING | ID | function | "true" | "false" | "nil"   # fixme true, false, nil
+# primary        → INTEGER | FLOAT | STRING | TRUE | FALSE
+#                | ID
 #                | function_call
+#                | "nil"   # fixme nil, arrays
 #                | "(" expression ")"
 
 class Parser():
@@ -265,7 +267,7 @@ class Parser():
 
     def primary(self):
         result = {}
-        if self.check(['INTEGER', 'FLOAT', 'BOOL', 'STRING']):
+        if self.check(['INTEGER', 'FLOAT', 'STRING', 'TRUE', 'FALSE']):
             result[self.next().type] = self.next().value
             self.advance()
         elif self.check(['ID']):
@@ -313,6 +315,7 @@ def main(a, b, c):
         print("abc")
     elif c <= e:
         c = d + e
+    elif True: x = sin(y)
     else:
         sin(x)
     return z
