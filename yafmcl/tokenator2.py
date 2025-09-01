@@ -30,7 +30,7 @@ class Tokenator(Lexer):
               ID,
 
               # Keywords
-              IF, ELIF, ELSE
+              DEF, RETURN, IF, ELIF, ELSE
 
             }
 
@@ -58,6 +58,8 @@ class Tokenator(Lexer):
     PIPE    = r'\|'
 
     ID      = r'[a-zA-Z_][a-zA-Z0-9_]*'
+    ID["def"] = DEF
+    ID["return"] = RETURN
     ID["if"] = IF
     ID["elif"] = ELIF
     ID["else"] = ELSE

@@ -5,11 +5,13 @@ import types
 
 from tokenator2 import Tokenator
 
+# function_def   → DEF ID LPAREN ( ID ( COMMA ID)* )? RPAREN COLON BLOCK
 # block          → statement
 #                | INDENT statement ( statement )* DEDENT
 # statement      → assign
 #                | function_call
 #                | conditional
+#                | RETURN expression
 # assign         → ID ASSIGN expression
 # function_call  → ID LPAREN ( expression ( COMMA expression )* )? RPAREN
 # conditional    → IF expression COLON block ( elif expression COLON block )* ( else colon block )?
@@ -60,6 +62,34 @@ class Parser():
         else:
             return False
 
+    def function_def(self):
+        result = {}
+        param = 0
+        result["op"] = "FUNCTION_DEF"
+        self.match(['DEF'])
+        if self.check(['ID']):
+            result["name"] = self.next().value
+            self.advance()
+            self.match(['LPAREN'])
+            print(self.next())
+            if not self.check(['RPAREN']):
+                print(self.next())
+                result["param%d" % param] = self.next().value
+                self.advance()
+                param += 1
+                print(self.next())
+            while self.check(['COMMA']):
+                print("after comma:", self.next())
+                self.advance()
+                result["param%d" % param] = self.next().value
+                self.advance()
+                print("after comma:", self.next())
+                param += 1
+            self.match(['RPAREN'])
+            self.match(['COLON'])
+            result["block"] = self.block()
+        return result
+
     def block(self):
         result = {}
         result["op"] = "BLOCK"
@@ -87,6 +117,11 @@ class Parser():
             result = self.expression()
         elif self.check(['IF']):
             result = self.conditional()
+        elif self.check(['RETURN']):
+            self.advance()
+            result = {}
+            result["op"] = "RETURN"
+            result["expression"] = self.expression()
         print("statement:", json.dumps(result, indent="  "))
         return result
 
@@ -103,7 +138,7 @@ class Parser():
         else:
             print("error")
 
-    def function(self):
+    def function_call(self):
         result = {}
         param = 0
         result["op"] = "CALL"
@@ -128,16 +163,18 @@ class Parser():
         result["op"] = "CONDITIONAL"
         num = 0
         self.match(['IF'])
-        result["cond%d" % num] = self.expression()
+        result["cond%d" % num] = {}
+        result["cond%d" % num]["expression"] = self.expression()
         self.match(['COLON'])
-        result["block%d" % num] = self.block()
+        result["cond%d" % num]["block"] = self.block()
         num += 1
         while self.check(['ELIF']):
             print("elif ...")
             self.advance()
-            result["cond%d" % num] = self.expression()
+            result["cond%d" % num] = {}
+            result["cond%d" % num]["expression"] = self.expression()
             self.match(['COLON'])
-            result["block%d" % num] = self.block()
+            result["cond%d" % num]["block"] = self.block()
             num +=1
         if self.check(['ELSE']):
             self.advance()
@@ -235,7 +272,7 @@ class Parser():
             if self.next(1).type == 'ASSIGN':
                 result = self.assign()
             elif self.next(1).type == 'LPAREN':
-                result = self.function()
+                result = self.function_call()
             else:
                 result[self.next().type] = self.next().value
                 self.advance()
@@ -268,8 +305,23 @@ elif c <= e:
 else:
     sin(x)
 """
+
+    data = """
+def main(a, b, c):
+    if a == b:
+        print("hello world")
+        print("abc")
+    elif c <= e:
+        c = d + e
+    else:
+        sin(x)
+    return z
+"""
+
     lexer = Tokenator()
     tokens = list( lexer.tokenize(data) )
 
     parser = Parser(tokens)
-    parser.statement()
+    ast = parser.function_def()
+    print("ast:")
+    print(json.dumps(ast, indent="  "))
