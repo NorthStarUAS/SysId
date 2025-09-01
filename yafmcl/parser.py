@@ -71,8 +71,12 @@ class Parser():
             num += 1
             while not self.check('DEDENT'):
                 print("no dedent, expecting another statement")
+                print("next token is:", self.next().type)
                 result["statement%d" % num] = self.statement()
                 num +=1
+            print("block end")
+            print("next token:", self.next().type)
+            self.advance()
         else:
             result["statement%d" % num] = self.statement()
         return result
@@ -129,6 +133,7 @@ class Parser():
         result["block%d" % num] = self.block()
         num += 1
         while self.check(['ELIF']):
+            print("elif ...")
             self.advance()
             result["cond%d" % num] = self.expression()
             self.match(['COLON'])
@@ -258,7 +263,7 @@ if __name__ == '__main__':
     data = """if a == b:
     print("hello world")
     print("abc")
-else:
+elif c <= e:
     c = d + e
 else:
     sin(x)

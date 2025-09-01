@@ -79,11 +79,12 @@ class Tokenator(Lexer):
             t.type = 'INDENT'
             t.value = indent
             self.last_indent = indent
+            return t
         elif indent < self.last_indent:
             t.type = 'DEDENT'
             t.value = indent
             self.last_indent = indent
-        return t
+            return t
 
     @_(r'[ \t]+')
     def IGNORE_WHITESPACE(self, t):
