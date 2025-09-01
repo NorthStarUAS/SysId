@@ -65,10 +65,12 @@ class Parser():
         result["op"] = "BLOCK"
         num = 0
         if self.check('INDENT'):
+            print("block start")
             self.advance()
             result["statement%d" % num] = self.statement()
             num += 1
             while not self.check('DEDENT'):
+                print("no dedent, expecting another statement")
                 result["statement%d" % num] = self.statement()
                 num +=1
         else:
@@ -122,14 +124,19 @@ class Parser():
         result["op"] = "CONDITIONAL"
         num = 0
         self.match(['IF'])
-        result["cond%d" % num] = self.block()
+        result["cond%d" % num] = self.expression()
+        self.match(['COLON'])
+        result["block%d" % num] = self.block()
         num += 1
         while self.check(['ELIF']):
             self.advance()
-            result["cond%d" % num] = self.block()
+            result["cond%d" % num] = self.expression()
+            self.match(['COLON'])
+            result["block%d" % num] = self.block()
             num +=1
         if self.check(['ELSE']):
             self.advance()
+            self.match(['COLON'])
             result["else"] = self.block()
         return result
 
@@ -248,6 +255,14 @@ if __name__ == '__main__':
     data = "a = a1 = a2 = b + c = d * e()"
     data = "d = print(abc)"
 
+    data = """if a == b:
+    print("hello world")
+    print("abc")
+else:
+    c = d + e
+else:
+    sin(x)
+"""
     lexer = Tokenator()
     tokens = list( lexer.tokenize(data) )
 

@@ -23,7 +23,8 @@ class Tokenator(Lexer):
 
               # Syntax
               COMMA, COLON, PIPE,
-              LEADING_INDENT, COMMENT,
+              INDENT, DEDENT,
+              COMMENT,
 
               # Symbols
               ID,
@@ -68,10 +69,21 @@ class Tokenator(Lexer):
     #     print("line:", self.lineno)
 
     # Define a rule so we can track line numbers
+    last_indent = 0
     @_(r'\n[ \t]*')
-    def LEADING_INDENT(self, t):
+    def LEADING_WHITESPACE(self, t):
         self.lineno += 1
-        print("indent:", len(t.value)-1, "line:", self.lineno)
+        indent = len(t.value)-1
+        print("indent:", indent, "line:", self.lineno)
+        if indent > self.last_indent:
+            t.type = 'INDENT'
+            t.value = indent
+            self.last_indent = indent
+        elif indent < self.last_indent:
+            t.type = 'DEDENT'
+            t.value = indent
+            self.last_indent = indent
+        return t
 
     @_(r'[ \t]+')
     def IGNORE_WHITESPACE(self, t):
