@@ -5,7 +5,9 @@ import types
 
 from tokenator2 import Tokenator
 
+# program        → ( statement | function_def ) *
 # function_def   → DEF ID LPAREN ( ID ( COMMA ID)* )? RPAREN COLON BLOCK
+#
 # block          → statement
 #                | INDENT statement ( statement )* DEDENT
 # statement      → assign
@@ -15,7 +17,7 @@ from tokenator2 import Tokenator
 # assign         → ID ASSIGN expression
 # function_call  → ID LPAREN ( expression ( COMMA expression )* )? RPAREN
 # conditional    → IF expression COLON block ( elif expression COLON block )* ( else colon block )?
-
+#
 # expression     → equality
 # equality       → comparison ( ( "!=" | "==" ) comparison )*
 # comparison     → term ( ( ">" | ">=" | "<" | "<=" ) term )*
@@ -63,6 +65,18 @@ class Parser():
             return True
         else:
             return False
+
+    def program(self):
+        result = {}
+        result["op"] = "PROGRAM"
+        result["functions"] = []
+        result["statements"] = []
+        while self.next().type != 'EOF':
+            if self.next().type == 'DEF':
+                result["functions"].append( self.function_def() )
+            else:
+                result["statements"].append( self.statement() )
+        return result
 
     def function_def(self):
         result = {}
@@ -309,7 +323,9 @@ else:
 """
 
     data = """
-def main(a, b, c):
+az = import("/sensors/imu/az")
+
+def update(a, b, c):
     if a == b:
         print("hello world")
         print("abc")
@@ -319,12 +335,14 @@ def main(a, b, c):
     else:
         sin(x)
     return z
+
+update(az)
 """
 
     lexer = Tokenator()
     tokens = list( lexer.tokenize(data) )
 
     parser = Parser(tokens)
-    ast = parser.function_def()
+    ast = parser.program()
     print("ast:")
     print(json.dumps(ast, indent="  "))
