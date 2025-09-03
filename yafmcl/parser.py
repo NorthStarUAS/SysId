@@ -14,7 +14,8 @@ from tokenizer import Tokenizer
 #                | function_call
 #                | conditional
 #                | RETURN expression
-# assign         → ( ID | array_deref ) ASSIGN expression  <-- a or a[expr]
+# assign         → lhs ASSIGN expression
+# lhs            → ( ID | array_deref )
 # function_call  → ID LPAREN ( expression ( COMMA expression )* )? RPAREN
 # array_deref    → ID LBRACE expression RBRACE
 # conditional    → IF expression COLON block ( elif expression COLON block )* ( else colon block )?
@@ -131,7 +132,7 @@ class Parser():
     def statement(self):
         result = {}
         if self.check(['ID']):
-            result = self.expression()
+            result = self.assign()
         elif self.check(['IF']):
             result = self.conditional()
         elif self.check(['RETURN']):
@@ -143,17 +144,28 @@ class Parser():
         return result
 
     def assign(self):
-        if self.check(['ID']): # <-- fixme: check for simple id or array
-            result = {}
-            result["op"] = "ASSIGN"
-            result["left"] = self.next().value
-            self.advance()
-            self.match(['ASSIGN'])
-            result["right"] = self.expression()
-            # print("term right:", json.dumps(left))
+        print("enter assign")
+        result = {}
+        result["op"] = "ASSIGN"
+        result["left"] = self.lhs()
+        self.match(['ASSIGN'])
+        result["right"] = self.expression()
+        # print("term right:", json.dumps(left))
+        return result
+
+    def lhs(self):
+        print("enter lhs")
+        if self.check(['ID']):
+            if self.next(1).type == 'LBRACE':
+                result = self.array_deref()
+            else:
+                result = {}
+                result[self.next().type] = self.next().value
+                self.advance()
             return result
         else:
             print("error")
+        return result
 
     def function_call(self):
         result = {}
@@ -300,9 +312,7 @@ class Parser():
             result[self.next().type] = self.next().value
             self.advance()
         elif self.check(['ID']):
-            if self.next(1).type == 'ASSIGN':  # <-- fixme: need to check for array deref too
-                result = self.assign()         # how is an assign a primary?
-            elif self.next(1).type == 'LBRACE':
+            if self.next(1).type == 'LBRACE':
                 result = self.array_deref()
             elif self.next(1).type == 'LPAREN':
                 result = self.function_call()
