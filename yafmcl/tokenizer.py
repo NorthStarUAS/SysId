@@ -6,7 +6,7 @@ from sly import Lexer  # dnf install python3-sly; pip install --break-system-pac
 #   https://github.com/dabeaz/ply/blob/master/example/GardenSnake/GardenSnake.py
 #   http://dalkescientific.com/writings/diary/archive/2006/08/30/gardensnake_language.html
 
-class Tokenator(Lexer):
+class Tokenizer(Lexer):
     # Set of token names.   This is always required
     tokens = {
               # Literals
@@ -19,7 +19,7 @@ class Tokenator(Lexer):
               EQ, NE, GTE, LTE, GT, LT, NOT,
 
               # Expressions
-              ASSIGN, LPAREN, RPAREN,
+              ASSIGN, LPAREN, RPAREN, LBRACE, RBRACE,
 
               # Syntax
               COMMA, COLON, PIPE,
@@ -54,6 +54,8 @@ class Tokenator(Lexer):
     ASSIGN  = r'='
     LPAREN  = r'\('
     RPAREN  = r'\)'
+    LBRACE  = r'\['
+    RBRACE  = r'\]'
     COMMA   = r','
     COLON   = r':'
     PIPE    = r'\|'
@@ -165,6 +167,6 @@ def my_function(a, b=3, c=None):
     return a + b
 
 """
-    tokenator = Tokenator()
+    tokenator = Tokenizer()
     for token in tokenator.tokenize(data):
         print('type=%r, value=%r' % (token.type, token.value), token)

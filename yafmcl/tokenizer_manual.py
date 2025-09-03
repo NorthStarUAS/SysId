@@ -10,7 +10,7 @@ import re
 # not bit-wise operations at this point
 
 
-class Tokenator():
+class Tokenizer():
     def __init__(self):
         self.input_string = ""
         # self.next_input = ""
@@ -154,7 +154,7 @@ class Tokenator():
         print("Line:", self.line_number, "unknown input token:", input[0:20], "...")
 
 if __name__ == "__main__" and __package__ is None:
-    tokenator = Tokenator()
+    tokenator = Tokenizer()
     input = \
 """
 0x45

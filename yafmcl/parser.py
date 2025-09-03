@@ -3,7 +3,7 @@
 import json
 import types
 
-from tokenator2 import Tokenator
+from tokenizer import Tokenizer
 
 # program        → ( statement | function_def ) *
 # function_def   → DEF ID LPAREN ( ID ( COMMA ID)* )? RPAREN COLON BLOCK
@@ -14,8 +14,9 @@ from tokenator2 import Tokenator
 #                | function_call
 #                | conditional
 #                | RETURN expression
-# assign         → ID ASSIGN expression
+# assign         → ( ID | array_deref ) ASSIGN expression  <-- a or a[expr]
 # function_call  → ID LPAREN ( expression ( COMMA expression )* )? RPAREN
+# array_deref    → ID LBRACE expression RBRACE
 # conditional    → IF expression COLON block ( elif expression COLON block )* ( else colon block )?
 #
 # expression     → equality
@@ -26,7 +27,7 @@ from tokenator2 import Tokenator
 # unary          → ( "!" | "-" ) unary
 #                | primary
 # primary        → INTEGER | FLOAT | STRING | TRUE | FALSE
-#                | ID
+#                | ID | ID LBRACE expression RBRACE
 #                | function_call
 #                | "nil"   # fixme nil, arrays
 #                | "(" expression ")"
@@ -142,7 +143,7 @@ class Parser():
         return result
 
     def assign(self):
-        if self.check(['ID']):
+        if self.check(['ID']): # <-- fixme: check for simple id or array
             result = {}
             result["op"] = "ASSIGN"
             result["left"] = self.next().value
@@ -170,6 +171,20 @@ class Parser():
                 result["param%d" % param] = self.expression()
                 param += 1
             self.match(['RPAREN'])
+        else:
+            print("error")
+        return result
+
+    def array_deref(self):
+        result = {}
+        param = 0
+        result["op"] = "ARRAY_DEREF"
+        if self.check(['ID']):
+            result["name"] = self.next().value
+            self.advance()
+            self.match(['LBRACE'])
+            result["expression"] = self.expression()
+            self.match(['RBRACE'])
         else:
             print("error")
         return result
@@ -285,8 +300,10 @@ class Parser():
             result[self.next().type] = self.next().value
             self.advance()
         elif self.check(['ID']):
-            if self.next(1).type == 'ASSIGN':
-                result = self.assign()
+            if self.next(1).type == 'ASSIGN':  # <-- fixme: need to check for array deref too
+                result = self.assign()         # how is an assign a primary?
+            elif self.next(1).type == 'LBRACE':
+                result = self.array_deref()
             elif self.next(1).type == 'LPAREN':
                 result = self.function_call()
             else:
@@ -334,12 +351,13 @@ def update(a, b, c):
     elif True: x = sin(y)
     else:
         sin(x)
+        a["test"] = b[1+2*(3-x)]
     return z
 
 update(az)
 """
 
-    lexer = Tokenator()
+    lexer = Tokenizer()
     tokens = list( lexer.tokenize(data) )
 
     parser = Parser(tokens)
