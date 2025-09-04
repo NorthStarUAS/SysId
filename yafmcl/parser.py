@@ -5,18 +5,18 @@ import types
 
 from tokenizer import Tokenizer
 
-# program        → ( statement | function_def ) *
-# function_def   → DEF ID LPAREN ( ID ( COMMA ID)* )? RPAREN COLON BLOCK
+# program        → ( statement | function ) *
+# function   → DEF ID LPAREN ( ID ( COMMA ID)* )? RPAREN COLON BLOCK
 #
 # block          → statement
 #                | INDENT statement ( statement )* DEDENT
 # statement      → assign
-#                | function_call
+#                | call
 #                | conditional
 #                | RETURN expression
 # assign         → lhs ASSIGN expression
 # lhs            → ( ID | array_deref )
-# function_call  → ID LPAREN ( expression ( COMMA expression )* )? RPAREN
+# call           → ID LPAREN ( expression ( COMMA expression )* )? RPAREN
 # array_deref    → ID LBRACE expression RBRACE
 # conditional    → IF expression COLON block ( elif expression COLON block )* ( else colon block )?
 #
@@ -29,7 +29,7 @@ from tokenizer import Tokenizer
 #                | primary
 # primary        → INTEGER | FLOAT | STRING | TRUE | FALSE
 #                | ID | ID LBRACE expression RBRACE
-#                | function_call
+#                | call
 #                | "nil"   # fixme nil, arrays
 #                | "(" expression ")"
 
@@ -69,88 +69,81 @@ class Parser():
             return False
 
     def program(self):
-        result = {}
-        result["op"] = "PROGRAM"
-        result["functions"] = []
-        result["statements"] = []
+        functions = []
+        statements = []
         while self.next().type != 'EOF':
             if self.next().type == 'DEF':
-                result["functions"].append( self.function_def() )
+                functions.append( self.function() )
             else:
-                result["statements"].append( self.statement() )
+                statements.append( self.statement() )
+        result = {"program": {"functions": functions, "statements": statements}}
         return result
 
-    def function_def(self):
-        result = {}
-        param = 0
-        result["op"] = "FUNCTION_DEF"
+    def function(self):
+        name = ""
+        params = []
         self.match(['DEF'])
         if self.check(['ID']):
-            result["name"] = self.next().value
+            name = self.next().value
             self.advance()
             self.match(['LPAREN'])
             print(self.next())
             if not self.check(['RPAREN']):
                 print(self.next())
-                result["param%d" % param] = self.next().value
+                params.append(self.next().value)
                 self.advance()
-                param += 1
                 print(self.next())
             while self.check(['COMMA']):
                 print("after comma:", self.next())
                 self.advance()
-                result["param%d" % param] = self.next().value
+                params.append(self.next().value)
                 self.advance()
                 print("after comma:", self.next())
-                param += 1
             self.match(['RPAREN'])
             self.match(['COLON'])
-            result["block"] = self.block()
+            statements = self.block()
+        result = {"function": {"name": name, "params": params, "statements": statements}}
         return result
 
     def block(self):
-        result = {}
-        result["op"] = "BLOCK"
-        num = 0
+        statements = []
         if self.check('INDENT'):
             print("block start")
             self.advance()
-            result["statement%d" % num] = self.statement()
-            num += 1
+            statements.append(self.statement())
             while not self.check('DEDENT'):
                 print("no dedent, expecting another statement")
                 print("next token is:", self.next().type)
-                result["statement%d" % num] = self.statement()
-                num +=1
+                statements.append(self.statement())
             print("block end")
             print("next token:", self.next().type)
             self.advance()
         else:
-            result["statement%d" % num] = self.statement()
+            statements.append(self.statement())
+        result = statements
         return result
 
     def statement(self):
-        result = {}
         if self.check(['ID']):
-            result = self.assign()
+            if self.next(1).type == 'LPAREN':
+                result = self.call()
+            else:
+                result = self.assign()
         elif self.check(['IF']):
             result = self.conditional()
         elif self.check(['RETURN']):
             self.advance()
-            result = {}
-            result["op"] = "RETURN"
-            result["expression"] = self.expression()
+            expr = self.expression()
+            result = {"return": expr}
         print("statement:", json.dumps(result, indent="  "))
         return result
 
     def assign(self):
         print("enter assign")
-        result = {}
-        result["op"] = "ASSIGN"
-        result["left"] = self.lhs()
+        left = self.lhs()
         self.match(['ASSIGN'])
-        result["right"] = self.expression()
-        # print("term right:", json.dumps(left))
+        right = self.expression()
+        result = {"assign": {"left": left, "right": right}}
         return result
 
     def lhs(self):
@@ -165,26 +158,22 @@ class Parser():
             return result
         else:
             print("error")
-        return result
 
-    def function_call(self):
-        result = {}
-        param = 0
-        result["op"] = "CALL"
+    def call(self):
+        params = []
         if self.check(['ID']):
-            result["name"] = self.next().value
+            name = self.next().value
             self.advance()
             self.match(['LPAREN'])
             if not self.check(['RPAREN']):
-                result["param%d" % param] = self.expression()
-                param += 1
+                params.append(self.expression())
             while self.check(['COMMA']):
                 self.advance()
-                result["param%d" % param] = self.expression()
-                param += 1
+                params.append(self.expression())
             self.match(['RPAREN'])
         else:
             print("error")
+        result = {"call": {"name": name, "params": params}}
         return result
 
     def array_deref(self):
@@ -202,27 +191,26 @@ class Parser():
         return result
 
     def conditional(self):
-        result = {}
-        result["op"] = "CONDITIONAL"
-        num = 0
+        conditionals = []
         self.match(['IF'])
-        result["cond%d" % num] = {}
-        result["cond%d" % num]["expression"] = self.expression()
+        expr = self.expression()
         self.match(['COLON'])
-        result["cond%d" % num]["block"] = self.block()
-        num += 1
+        statements = self.block()
+        conditionals.append({"expression": expr, "statements": statements})
         while self.check(['ELIF']):
             print("elif ...")
             self.advance()
-            result["cond%d" % num] = {}
-            result["cond%d" % num]["expression"] = self.expression()
+            expr = self.expression()
             self.match(['COLON'])
-            result["cond%d" % num]["block"] = self.block()
-            num +=1
+            statements = self.block()
+            conditionals.append({"expression": expr, "statements": statements})
         if self.check(['ELSE']):
             self.advance()
             self.match(['COLON'])
-            result["else"] = self.block()
+            expr = {"TRUE": "True"}
+            statements = self.block()
+            conditionals.append({"expression": expr, "statements": statements})
+        result = {"conditional": conditionals}
         return result
 
     def expression(self):
@@ -315,7 +303,7 @@ class Parser():
             if self.next(1).type == 'LBRACE':
                 result = self.array_deref()
             elif self.next(1).type == 'LPAREN':
-                result = self.function_call()
+                result = self.call()
             else:
                 result[self.next().type] = self.next().value
                 self.advance()
