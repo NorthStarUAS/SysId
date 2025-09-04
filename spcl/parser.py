@@ -102,7 +102,7 @@ class Parser():
             self.match(['RPAREN'])
             self.match(['COLON'])
             statements = self.block()
-        result = {"function": {"name": name, "params": params, "statements": statements}}
+        result = {name: {"params": params, "statements": statements}}
         return result
 
     def block(self):
@@ -177,15 +177,13 @@ class Parser():
         return result
 
     def array_deref(self):
-        result = {}
-        param = 0
-        result["op"] = "ARRAY_DEREF"
         if self.check(['ID']):
-            result["name"] = self.next().value
+            name = self.next().value
             self.advance()
             self.match(['LBRACE'])
-            result["expression"] = self.expression()
+            expr = self.expression()
             self.match(['RBRACE'])
+            result = {"array_deref": {"name": name, "expr": expr}}
         else:
             print("error")
         return result
