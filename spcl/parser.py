@@ -28,7 +28,7 @@ from tokenizer import Tokenizer
 # factor         → unary ( ( "/" | "*" ) unary )*
 # unary          → ( "!" | "-" ) unary
 #                | primary
-# primary        → INTEGER | FLOAT | STRING | TRUE | FALSE
+# primary        → INTEGER | FLOAT | STRING | BOOLEAN
 #                | ID | ID LBRACE expression RBRACE
 #                | call
 #                | "nil"   # fixme nil, arrays
@@ -81,7 +81,6 @@ class Parser():
         return result
 
     def function(self):
-        name = ""
         params = []
         self.match(['DEF'])
         if self.check(['ID']):
@@ -117,6 +116,7 @@ class Parser():
             self.advance()
             self.match(['COLON'])
             statements = self.block()
+        print(id)
         result = {"ID": function_name, "TYPE": function_type, "parameters": params, "statements": statements}
         return result
 
@@ -178,6 +178,7 @@ class Parser():
         params = []
         if self.check(['ID']):
             name = self.next().value
+            lineno = self.next().lineno
             self.advance()
             self.match(['LPAREN'])
             if not self.check(['RPAREN']):
@@ -188,7 +189,7 @@ class Parser():
             self.match(['RPAREN'])
         else:
             print("error")
-        result = {"call": {"name": name, "params": params}}
+        result = {"call": {"name": name, "params": params, "lineno": lineno}}
         return result
 
     def array_deref(self):
@@ -220,7 +221,7 @@ class Parser():
         if self.check(['ELSE']):
             self.advance()
             self.match(['COLON'])
-            expr = {"TRUE": "True"}
+            expr = {"BOOLEAN": "True"}
             statements = self.block()
             conditionals.append({"expression": expr, "statements": statements})
         result = {"conditional": conditionals}
@@ -327,7 +328,9 @@ class Parser():
 # Types: int, float (double), string, bool
 # Strict type checking, no implicit int->float type promotion.
 
-from symbols import SymbolTable
+from symbols import SymbolTable, FunctionTable
+global_symbols = SymbolTable()
+global_funcs = FunctionTable()
 
 def compare_types(sym, a, b):
     if a is None or b is None:
@@ -339,7 +342,15 @@ def compare_types(sym, a, b):
         return None
 
 def resolve_types_expr(sym, expression):
-    if "op" in expression:
+    if "INTEGER" in expression:
+        return "int"
+    elif "FLOAT" in expression:
+        return "float"
+    elif "STRING" in expression:
+        return "string"
+    elif "BOOLEAN" in expression:
+        return "bool"
+    elif "op" in expression:
         op = expression["op"]
         lineno = expression["lineno"]
         left = resolve_types_expr(sym, expression["left"])
@@ -359,25 +370,44 @@ def resolve_types_expr(sym, expression):
         print("unhandled expression", expression)
 
 def resolve_types_statement(sym, statement):
+    # statements do not propagate a type up the syntax tree
     if "conditional" in statement:
         for c in statement["conditional"]:
             e = c["expression"]
-            s = c["statements"]
             result = resolve_types_expr(sym, e)
-            result = resolve_types_statement(sym, s)
-    if "assign" in statement:
-        right = resolve_types_expr(statement["assign"]["right"])
+            for s in c["statements"]:
+                result = resolve_types_statement(sym, s)
+    elif "assign" in statement:
+        # print("assign right:", statement["assign"])
+        right = resolve_types_expr(sym, statement["assign"]["right"])
+    elif "call" in statement:
+        c = statement["call"]
+        calling_params = c["params"]
+        function_params = global_funcs.get_params(c["name"])
+        if len(calling_params) == len(function_params):
+            for i in range(len(calling_params)):
+                p1 = sym.get_type(c["params"][i]["ID"])
+                p2 = function_params[i]["type"]
+                if p1 != p2:
+                    ok = False
+                    print("Parameter type mismatch in function call on line:", c["lineno"], "%s()" % c["name"], "parameter:", i, p1, "vs", p2)
+                    break
+        else:
+                    print("Wrong number of parameters in function call on line:", c["lineno"], "%s()" % c["name"], len(function_params), "vs", len(calling_params))
     else:
         print("unhandled statement:", statement)
 
 def resolve_types(ast):
     p = ast["program"]
     for f in p["functions"]:
+        id = f["ID"]
+        return_type = f["TYPE"]
         sym = SymbolTable()
         for p in f["parameters"]:
             sym.add(p["ID"], p["TYPE"])
         for s in f["statements"]:
             result = resolve_types_statement(sym, s)
+        global_funcs.add(id, return_type, f["parameters"])
 
 if __name__ == '__main__':
 
@@ -405,7 +435,7 @@ else:
 az = getDouble("/sensors/imu/az")
 
 def update(a: int, b: float, c: bool) -> bool:
-    if a == b:
+    if a == 2.0:
         print("hello world")
         print("abc")
     elif c <= e:
