@@ -236,12 +236,11 @@ class Parser():
         # print("equality:", self.next())
         left = self.comparison()
         if self.check(['EQ', 'NEQ']):
-            result = {}
-            result["op"] = self.next().type
+            op = self.next().type
+            lineno = self. next().lineno
             self.advance()
             right = self.equality()
-            result["left"] = left
-            result["right"] = right
+            result = {"op": op, "lineno": lineno, "left": left, "right": right}
             # print("term right:", json.dumps(left))
         else:
             result = left
@@ -252,12 +251,11 @@ class Parser():
         # print("comparison:", self.next())
         left = self.term()
         if self.check(['GT', 'GTE', 'LT', 'LTE']):
-            result = {}
-            result["op"] = self.next().type
+            op = self.next().type
+            lineno = self. next().lineno
             self.advance()
             right = self.comparison()
-            result["left"] = left
-            result["right"] = right
+            result = {"op": op, "lineno": lineno, "left": left, "right": right}
             # print("term right:", json.dumps(left))
         else:
             result = left
@@ -269,12 +267,11 @@ class Parser():
         left = self.factor()
         # print("term left:", json.dumps(left))
         if self.check(['PLUS', 'MINUS']):
-            result = {}
-            result["op"] = self.next().type
+            op = self.next().type
+            lineno = self. next().lineno
             self.advance()
             right = self.term()
-            result["left"] = left
-            result["right"] = right
+            result = {"op": op, "lineno": lineno, "left": left, "right": right}
             # print("term right:", json.dumps(left))
         else:
             result = left
@@ -285,12 +282,11 @@ class Parser():
     def factor(self):
         left = self.unary()
         if self.check(['TIMES', 'DIVIDE']):
-            result = {}
-            result["op"] = self.next().type
+            op = self.next().type
+            lineno = self. next().lineno
             self.advance()
             right = self.factor()
-            result["left"] = left
-            result["right"] = right
+            result = {"op": op, "lineno": lineno, "left": left, "right": right}
         else:
             result = left
         # print("factor:", result)
@@ -299,16 +295,17 @@ class Parser():
     def unary(self):
         result = {}
         if self.check(['NOT', 'MINUS']):
-            result["op"] = self.next().type
+            op = self.next().type
+            lineno = self.next().lineno
             self.advance()
-            result["left"] = self.unary()
+            left = self.unary()
+            result = {"op": op, "lineno": lineno, "left": left}
         else:
             result = self.primary()
         # print("unary:", result)
         return result
 
     def primary(self):
-        result = {}
         if self.check(['INTEGER', 'FLOAT', 'STRING', 'BOOLEAN']):
             result = {self.next().type: self.next().value, "lineno": self.next().lineno}
             self.advance()
@@ -327,22 +324,30 @@ class Parser():
         # print("primary:", result)
         return result
 
+# Types: int, float (double), string, bool
+# Strict type checking, no implicit int->float type promotion.
+
 from symbols import SymbolTable
 
 def compare_types(sym, a, b):
-    if a == b:
+    if a is None or b is None:
+        return None
+    elif a == b:
         return a
-    elif (a == "INTEGER" and b == "FLOAT") or (a == "FLOAT" and b == "INTEGER"):
-        return "FLOAT"  # type promotion
     else:
-        print("Type mismatch!")
+        # print("Type mismatch:", a, b)
+        return None
 
 def resolve_types_expr(sym, expression):
     if "op" in expression:
         op = expression["op"]
+        lineno = expression["lineno"]
         left = resolve_types_expr(sym, expression["left"])
         right = resolve_types_expr(sym, expression["right"])
-        return( compare_types(sym, left, right))
+        result = compare_types(sym, left, right)
+        if result is None:
+            print("Type mismatch in expression line:", lineno, left, op, right)
+        return result
     elif "ID" in expression:
         if sym.check(expression["ID"]):
             print(expression["ID"], sym.get_type(expression["ID"]))
