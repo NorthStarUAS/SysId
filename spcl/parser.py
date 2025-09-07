@@ -349,6 +349,7 @@ def resolve_types_expr(sym, expression):
             return sym.get_type(expression["ID"])
         else:
             print("Symbol %s used before definition.  Line %d" % (expression["ID"], expression["lineno"]))
+            print("symbol table:", sym.symbols)
     else:
         print("unhandled expression", expression)
 
@@ -360,7 +361,6 @@ def resolve_types_statement(sym, statement):
             result = resolve_types_expr(sym, e)
             result = resolve_types_statement(sym, s)
     if "assign" in statement:
-
         right = resolve_types_expr(statement["assign"]["right"])
     else:
         print("unhandled statement:", statement)
@@ -369,6 +369,8 @@ def resolve_types(ast):
     p = ast["program"]
     for f in p["functions"]:
         sym = SymbolTable()
+        for p in f["parameters"]:
+            sym.add(p["ID"], p["TYPE"])
         for s in f["statements"]:
             result = resolve_types_statement(sym, s)
 
