@@ -6,7 +6,8 @@ import types
 from tokenizer import Tokenizer
 
 # program        → ( statement | function ) *
-# function   → DEF ID LPAREN ( ID ( COMMA ID)* )? RPAREN COLON BLOCK
+# function       → DEF ID LPAREN ( ID COLON type_specifier ( COMMA ID COLON type_specifyer)* )? RPAREN ARROW type_specifier COLON BLOCK
+# type_specifier → ( INT | FLOAT | STRING | BOOL )
 #
 # block          → statement
 #                | INDENT statement ( statement )* DEDENT
@@ -59,7 +60,7 @@ class Parser():
             self.advance()
             return True
         else:
-            print("match failed:", tokens)
+            print("match failed, looking for:", tokens, "found:", self.next())
             return False
 
     def check(self, tokens):
@@ -84,25 +85,39 @@ class Parser():
         params = []
         self.match(['DEF'])
         if self.check(['ID']):
-            name = self.next().value
+            function_name = self.next().value
             self.advance()
             self.match(['LPAREN'])
             print(self.next())
             if not self.check(['RPAREN']):
-                print(self.next())
-                params.append(self.next().value)
+                print("first param:", self.next())
+                id = self.next().value
                 self.advance()
+                self.match(['COLON'])
+                if self.check(['TYPE']):
+                    param_type = self.next().value
+                self.advance()
+                params.append({"ID": id, "TYPE": param_type})
                 print(self.next())
             while self.check(['COMMA']):
                 print("after comma:", self.next())
                 self.advance()
-                params.append(self.next().value)
+                id = self.next().value
                 self.advance()
+                self.match(['COLON'])
+                if self.check(['TYPE']):
+                    param_type = self.next().value
+                self.advance()
+                params.append({"ID": id, "TYPE": param_type})
                 print("after comma:", self.next())
             self.match(['RPAREN'])
+            self.match(['ARROW'])
+            if self.check(['TYPE']):
+                function_type = self.next().value
+            self.advance()
             self.match(['COLON'])
             statements = self.block()
-        result = {name: {"params": params, "statements": statements}}
+        result = {"ID": function_name, "TYPE": function_type, "parameters": params, "statements": statements}
         return result
 
     def block(self):
@@ -294,8 +309,8 @@ class Parser():
 
     def primary(self):
         result = {}
-        if self.check(['INTEGER', 'FLOAT', 'STRING', 'TRUE', 'FALSE']):
-            result[self.next().type] = self.next().value
+        if self.check(['INTEGER', 'FLOAT', 'STRING', 'BOOLEAN']):
+            result = {self.next().type: self.next().value, "lineno": self.next().lineno}
             self.advance()
         elif self.check(['ID']):
             if self.next(1).type == 'LBRACE':
@@ -303,15 +318,59 @@ class Parser():
             elif self.next(1).type == 'LPAREN':
                 result = self.call()
             else:
-                result[self.next().type] = self.next().value
+                result = {self.next().type: self.next().value, "lineno": self.next().lineno}
                 self.advance()
         else:
-            result = {}
             self.match(['LPAREN'])
             result = self.expression()
             self.match(['RPAREN'])
         # print("primary:", result)
         return result
+
+from symbols import SymbolTable
+
+def compare_types(sym, a, b):
+    if a == b:
+        return a
+    elif (a == "INTEGER" and b == "FLOAT") or (a == "FLOAT" and b == "INTEGER"):
+        return "FLOAT"  # type promotion
+    else:
+        print("Type mismatch!")
+
+def resolve_types_expr(sym, expression):
+    if "op" in expression:
+        op = expression["op"]
+        left = resolve_types_expr(sym, expression["left"])
+        right = resolve_types_expr(sym, expression["right"])
+        return( compare_types(sym, left, right))
+    elif "ID" in expression:
+        if sym.check(expression["ID"]):
+            print(expression["ID"], sym.get_type(expression["ID"]))
+            return sym.get_type(expression["ID"])
+        else:
+            print("Symbol %s used before definition.  Line %d" % (expression["ID"], expression["lineno"]))
+    else:
+        print("unhandled expression", expression)
+
+def resolve_types_statement(sym, statement):
+    if "conditional" in statement:
+        for c in statement["conditional"]:
+            e = c["expression"]
+            s = c["statements"]
+            result = resolve_types_expr(sym, e)
+            result = resolve_types_statement(sym, s)
+    if "assign" in statement:
+
+        right = resolve_types_expr(statement["assign"]["right"])
+    else:
+        print("unhandled statement:", statement)
+
+def resolve_types(ast):
+    p = ast["program"]
+    for f in p["functions"]:
+        sym = SymbolTable()
+        for s in f["statements"]:
+            result = resolve_types_statement(sym, s)
 
 if __name__ == '__main__':
 
@@ -336,9 +395,9 @@ else:
 """
 
     data = """
-az = import("/sensors/imu/az")
+az = getDouble("/sensors/imu/az")
 
-def update(a, b, c):
+def update(a: int, b: float, c: bool) -> bool:
     if a == b:
         print("hello world")
         print("abc")
@@ -360,3 +419,5 @@ update(az)
     ast = parser.program()
     print("ast:")
     print(json.dumps(ast, indent="  "))
+
+    resolve_types(ast)

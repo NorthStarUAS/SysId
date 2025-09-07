@@ -10,7 +10,7 @@ class Tokenizer(Lexer):
     # Set of token names.   This is always required
     tokens = {
               # Literals
-              FLOAT, INTEGER, STRING, BOOL,
+              FLOAT, INTEGER, STRING, BOOLEAN,
 
               # Arithmetic
               TIMES, DIVIDE, PLUS, MINUS, EXPONENT,
@@ -22,16 +22,16 @@ class Tokenizer(Lexer):
               ASSIGN, LPAREN, RPAREN, LBRACE, RBRACE,
 
               # Syntax
-              COMMA, COLON, PIPE,
+              COMMA, COLON, ARROW, PIPE,
               INDENT, DEDENT,
               COMMENT,
 
               # Symbols
-              ID,
+              ID, TYPE,
 
               # Keywords
               DEF, RETURN,
-              IF, ELIF, ELSE, TRUE, FALSE
+              IF, ELIF, ELSE
 
             }
 
@@ -39,10 +39,7 @@ class Tokenizer(Lexer):
     # ignore = ' \t'
 
     # Regular expression rules for tokens
-    TIMES   = r'\*'
-    DIVIDE  = r'/'
-    PLUS    = r'\+'
-    MINUS   = r'-'
+    ARROW   = r'->'
     EXPONENT = r'\^'
     EQ      = r'=='
     NE      = r'!='
@@ -59,6 +56,10 @@ class Tokenizer(Lexer):
     COMMA   = r','
     COLON   = r':'
     PIPE    = r'\|'
+    TIMES   = r'\*'
+    DIVIDE  = r'/'
+    PLUS    = r'\+'
+    MINUS   = r'-'
 
     ID      = r'[a-zA-Z_][a-zA-Z0-9_]*'
     ID["def"] = DEF
@@ -66,8 +67,12 @@ class Tokenizer(Lexer):
     ID["if"] = IF
     ID["elif"] = ELIF
     ID["else"] = ELSE
-    ID["True"] = TRUE
-    ID["False"] = FALSE
+    ID["True"] = BOOLEAN
+    ID["False"] = BOOLEAN
+    ID["int"] = TYPE
+    ID["float"] = TYPE
+    ID["string"] = TYPE
+    ID["bool"] = TYPE
 
     # # Define a rule so we can track line numbers
     # @_(r'\n+')
