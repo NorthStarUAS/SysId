@@ -365,7 +365,7 @@ def resolve_types_expr(sym, expression):
             return sym.get_type(expression["ID"])
         else:
             print("Symbol %s used before definition.  Line %d" % (expression["ID"], expression["lineno"]))
-            print("symbol table:", sym.symbols)
+            # print("symbol table:", sym.symbols)
     else:
         print("unhandled expression", expression)
 
