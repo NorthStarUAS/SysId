@@ -1,5 +1,6 @@
 # an attempt to remember how to write a recursive descent parser ... wish me luck!
 
+from copy import deepcopy
 import json
 import types
 
@@ -396,8 +397,9 @@ def resolve_types_statement(sym, statement):
         for c in statement["conditional"]:
             e = c["expression"]
             result = resolve_types_expr(sym, e)
+            sub_sym = deepcopy(sym)  # variable assignments in this block aren't visible outside.
             for s in c["statements"]:
-                result = resolve_types_statement(sym, s)
+                result = resolve_types_statement(sub_sym, s)
     elif "assign" in statement:
         # print("assign right:", statement["assign"])
         lhs_id = statement["assign"]["left"]["ID"]
@@ -470,7 +472,7 @@ az = getDouble("/sensors/imu/az")
 
 def update(a: int, b: float, c: bool) -> bool:
     y = 2.0
-    z = 3
+    z = 3.0
     if a == 2.0:
         print("hello world")
         print("abc")
