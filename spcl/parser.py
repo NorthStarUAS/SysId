@@ -96,7 +96,7 @@ class Parser():
                 if self.check(['TYPE']):
                     param_type = self.next().value
                 self.advance()
-                params.append({"ID": id, "TYPE": param_type})
+                params.append({id: param_type})
                 print(self.next())
             while self.check(['COMMA']):
                 print("after comma:", self.next())
@@ -107,7 +107,7 @@ class Parser():
                 if self.check(['TYPE']):
                     param_type = self.next().value
                 self.advance()
-                params.append({"ID": id, "TYPE": param_type})
+                params.append({id: param_type})
                 print("after comma:", self.next())
             self.match(['RPAREN'])
             self.match(['ARROW'])
@@ -156,9 +156,10 @@ class Parser():
     def assign(self):
         print("enter assign")
         left = self.lhs()
+        lineno = self.next().lineno
         self.match(['ASSIGN'])
         right = self.expression()
-        result = {"assign": {"left": left, "right": right}}
+        result = {"assign": {"left": left, "right": right, "lineno": lineno}}
         return result
 
     def lhs(self):
@@ -359,6 +360,8 @@ def resolve_types_expr(sym, expression):
         if result is None:
             print("Type mismatch in expression line:", lineno, left, op, right)
         return result
+    elif "call" in expression:
+        return resolve_types_call(sym, expression["call"])
     elif "ID" in expression:
         if sym.check(expression["ID"]):
             print(expression["ID"], sym.get_type(expression["ID"]))
@@ -368,6 +371,24 @@ def resolve_types_expr(sym, expression):
             # print("symbol table:", sym.symbols)
     else:
         print("unhandled expression", expression)
+
+def resolve_types_call(sym, call):
+    calling_params = call["params"]
+    function_params = global_funcs.get_params(call["name"])
+    if type(function_params) is str and function_params == "any":
+        # ok
+        print("calling:", call["name"], "with any parameters ok.")
+    elif len(calling_params) == len(function_params):
+        # print("call:", call)
+        for i in range(len(calling_params)):
+            p1 = resolve_types_expr(sym, call["params"][i])
+            p2 = function_params[i]["type"]
+            if p1 != p2:
+                print("Parameter type mismatch in function call on line:", call["lineno"], "%s()" % call["name"], "parameter:", i, p1, "vs", p2)
+                break
+    else:
+        print("Wrong number of parameters in function call on line:", call["lineno"], "%s()" % call["name"], len(function_params), "vs", len(calling_params))
+    return global_funcs.get_type(call["name"])
 
 def resolve_types_statement(sym, statement):
     # statements do not propagate a type up the syntax tree
@@ -379,21 +400,33 @@ def resolve_types_statement(sym, statement):
                 result = resolve_types_statement(sym, s)
     elif "assign" in statement:
         # print("assign right:", statement["assign"])
+        lhs_id = statement["assign"]["left"]["ID"]
         right = resolve_types_expr(sym, statement["assign"]["right"])
-    elif "call" in statement:
-        c = statement["call"]
-        calling_params = c["params"]
-        function_params = global_funcs.get_params(c["name"])
-        if len(calling_params) == len(function_params):
-            for i in range(len(calling_params)):
-                p1 = sym.get_type(c["params"][i]["ID"])
-                p2 = function_params[i]["type"]
-                if p1 != p2:
-                    ok = False
-                    print("Parameter type mismatch in function call on line:", c["lineno"], "%s()" % c["name"], "parameter:", i, p1, "vs", p2)
-                    break
+        lineno = statement["assign"]["lineno"]
+        if sym.check(lhs_id):
+            lhs_type = sym.get_type(lhs_id)
+            if lhs_type != right:
+                print("Type mismatch in expression line:", lineno, lhs_id, "=", right)
         else:
-                    print("Wrong number of parameters in function call on line:", c["lineno"], "%s()" % c["name"], len(function_params), "vs", len(calling_params))
+            sym.add(lhs_id, right)
+    elif "call" in statement:
+        resolve_types_call(sym, statement["call"])
+        # calling_params = c["params"]
+        # function_params = global_funcs.get_params(c["name"])
+        # if type(function_params) is str and function_params == "any":
+        #     # ok
+        #     print("calling:", c["name"], "with any parameters ok.")
+        #     pass
+        # elif len(calling_params) == len(function_params):
+        #     print("c:", c)
+        #     for i in range(len(calling_params)):
+        #         p1 = resolve_types_expr(sym, c["params"][i])
+        #         p2 = function_params[i]["type"]
+        #         if p1 != p2:
+        #             print("Parameter type mismatch in function call on line:", c["lineno"], "%s()" % c["name"], "parameter:", i, p1, "vs", p2)
+        #             break
+        # else:
+        #             print("Wrong number of parameters in function call on line:", c["lineno"], "%s()" % c["name"], len(function_params), "vs", len(calling_params))
     else:
         print("unhandled statement:", statement)
 
@@ -404,7 +437,8 @@ def resolve_types(ast):
         return_type = f["TYPE"]
         sym = SymbolTable()
         for p in f["parameters"]:
-            sym.add(p["ID"], p["TYPE"])
+            key = next(iter(p))
+            sym.add(key, p[key])
         for s in f["statements"]:
             result = resolve_types_statement(sym, s)
         global_funcs.add(id, return_type, f["parameters"])
@@ -435,12 +469,14 @@ else:
 az = getDouble("/sensors/imu/az")
 
 def update(a: int, b: float, c: bool) -> bool:
+    y = 2.0
+    z = 3
     if a == 2.0:
         print("hello world")
         print("abc")
     elif c <= e:
         c = d + e
-    elif True: x = sin(y)
+    elif True: x = sin(y+z)
     else:
         sin(x)
         a["test"] = b[1+2*(3-x)]
