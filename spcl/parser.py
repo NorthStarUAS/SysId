@@ -29,11 +29,13 @@ from tokenizer import Tokenizer
 # factor         → unary ( ( "/" | "*" ) unary )*
 # unary          → ( "!" | "-" ) unary
 #                | primary
-# primary        → INTEGER | FLOAT | STRING | BOOLEAN
-#                | ID | ID LBRACE expression RBRACE
+# primary        → ID
+#                | ID LBRACE expression RBRACE
 #                | call
-#                | "nil"   # fixme nil, arrays
 #                | "(" expression ")"
+#                | literal
+#                | "nil"   # fixme nil
+# literal        → INTEGER | FLOAT | STRING | BOOLEAN
 
 class Parser():
     def __init__(self, tokens):
@@ -309,10 +311,7 @@ class Parser():
         return result
 
     def primary(self):
-        if self.check(['INTEGER', 'FLOAT', 'STRING', 'BOOLEAN']):
-            result = {self.next().type: self.next().value, "lineno": self.next().lineno}
-            self.advance()
-        elif self.check(['ID']):
+        if self.check(['ID']):
             if self.next(1).type == 'LBRACE':
                 result = self.array_deref()
             elif self.next(1).type == 'LPAREN':
@@ -320,12 +319,22 @@ class Parser():
             else:
                 result = {self.next().type: self.next().value, "lineno": self.next().lineno}
                 self.advance()
-        else:
+        elif self.check(['LPAREN']):
             self.match(['LPAREN'])
             result = self.expression()
             self.match(['RPAREN'])
+        else:
+            result = self.literal()
         # print("primary:", result)
         return result
+
+    def literal(self):
+        if self.check(['INTEGER', 'FLOAT', 'STRING', 'BOOLEAN']):
+            result = {self.next().type: self.next().value, "lineno": self.next().lineno}
+            self.advance()
+            return result
+        else:
+            print("error")
 
 # Types: int, float (double), string, bool
 # Strict type checking, no implicit int->float type promotion.
@@ -363,10 +372,17 @@ def resolve_types_expr(sym, expression):
         return result
     elif "call" in expression:
         return resolve_types_call(sym, expression["call"])
-    elif "ID" in expression:
-        if sym.check(expression["ID"]):
-            print(expression["ID"], sym.get_type(expression["ID"]))
-            return sym.get_type(expression["ID"])
+    elif "ID" in expression or "array_deref" in expression:
+        if "array_deref" in expression:
+            id = expression["array_deref"]["name"]
+            index_type = resolve_types_expr(sym, expression["array_deref"]["expr"])
+            if index_type != "int":
+                print("array index type must resolve to an integer type.")
+        elif "ID" in expression:
+            id = expression["ID"]
+        if sym.check(id):
+            print(id, sym.get_type(id))
+            return sym.get_type(id)
         else:
             print("Symbol %s used before definition.  Line %d" % (expression["ID"], expression["lineno"]))
             # print("symbol table:", sym.symbols)
@@ -402,7 +418,14 @@ def resolve_types_statement(sym, statement):
                 result = resolve_types_statement(sub_sym, s)
     elif "assign" in statement:
         # print("assign right:", statement["assign"])
-        lhs_id = statement["assign"]["left"]["ID"]
+        lhs = statement["assign"]["left"]
+        if "ID" in lhs:
+            lhs_id = lhs["ID"]
+        elif "array_deref" in lhs:
+            lhs_id = lhs["array_deref"]["name"]
+            index_type = resolve_types_expr(sym, lhs["array_deref"]["expr"])
+            if index_type != "int":
+                print("array index type must resolve to an integer type.")
         right = resolve_types_expr(sym, statement["assign"]["right"])
         lineno = statement["assign"]["lineno"]
         if sym.check(lhs_id):
