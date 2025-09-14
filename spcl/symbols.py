@@ -20,8 +20,8 @@ class FunctionTable():
     def __init__(self):
         self.symbols = {}
         self.symbols["print"] = {"type": "bool", "params": "any"}
-        self.symbols["cos"] = {"type": "float", "params": [{"type": "float"}]}
-        self.symbols["sin"] = {"type": "float", "params": [{"type": "float"}]}
+        self.symbols["cos"] = {"type": "float", "params": [{"id": "x", "type": "float"}]}
+        self.symbols["sin"] = {"type": "float", "params": [{"id": "x", "type": "float"}]}
 
     def add(self, name, data_type, parameter_list):
         self.symbols[name] = {"type": data_type, "params": parameter_list}

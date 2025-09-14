@@ -19,7 +19,6 @@ from tokenizer import Tokenizer
 # assign         → lhs ASSIGN expression
 # lhs            → ( ID | array_deref )
 # call           → ID LPAREN ( expression ( COMMA expression )* )? RPAREN
-# array_deref    → ID LBRACE expression RBRACE
 # conditional    → IF expression COLON block ( elif expression COLON block )* ( else colon block )?
 #
 # expression     → equality
@@ -30,11 +29,14 @@ from tokenizer import Tokenizer
 # unary          → ( "!" | "-" ) unary
 #                | primary
 # primary        → ID
-#                | ID LBRACE expression RBRACE
+#                | array_deref
+#                | list
 #                | call
 #                | "(" expression ")"
 #                | literal
 #                | "nil"   # fixme nil
+# array_deref    → ID LBRACE expression RBRACE
+# list           → LBRACE ( expression ( COMMA expression )* )? RBRACE
 # literal        → INTEGER | FLOAT | STRING | BOOLEAN
 
 class Parser():
@@ -99,7 +101,7 @@ class Parser():
                 if self.check(['TYPE']):
                     param_type = self.next().value
                 self.advance()
-                params.append({id: param_type})
+                params.append({"id": id, "type": param_type})
                 print(self.next())
             while self.check(['COMMA']):
                 print("after comma:", self.next())
@@ -110,7 +112,7 @@ class Parser():
                 if self.check(['TYPE']):
                     param_type = self.next().value
                 self.advance()
-                params.append({id: param_type})
+                params.append({"id": "id", "type": param_type})
                 print("after comma:", self.next())
             self.match(['RPAREN'])
             self.match(['ARROW'])
@@ -194,18 +196,6 @@ class Parser():
         else:
             print("error")
         result = {"call": {"name": name, "params": params, "lineno": lineno}}
-        return result
-
-    def array_deref(self):
-        if self.check(['ID']):
-            name = self.next().value
-            self.advance()
-            self.match(['LBRACE'])
-            expr = self.expression()
-            self.match(['RBRACE'])
-            result = {"array_deref": {"name": name, "expr": expr}}
-        else:
-            print("error")
         return result
 
     def conditional(self):
@@ -319,6 +309,8 @@ class Parser():
             else:
                 result = {self.next().type: self.next().value, "lineno": self.next().lineno}
                 self.advance()
+        elif self.check(['LBRACE']):
+            result = self.list()
         elif self.check(['LPAREN']):
             self.match(['LPAREN'])
             result = self.expression()
@@ -326,6 +318,32 @@ class Parser():
         else:
             result = self.literal()
         # print("primary:", result)
+        return result
+
+    def array_deref(self):
+        if self.check(['ID']):
+            name = self.next().value
+            lineno = self.next().lineno
+            self.advance()
+            self.match(['LBRACE'])
+            expr = self.expression()
+            self.match(['RBRACE'])
+            result = {"array_deref": {"name": name, "expr": expr, "lineno": lineno}}
+        else:
+            print("error")
+        return result
+
+    def list(self):
+        items = []
+        lineno = self.next().lineno
+        self.match(['LBRACE'])
+        if not self.check(['RBRACE']):
+            items.append(self.expression())
+        while self.check(['COMMA']):
+            self.advance()
+            items.append(self.expression())
+        self.match(['RBRACE'])
+        result = {"list": {"items": items, "lineno": lineno}}
         return result
 
     def literal(self):
@@ -353,6 +371,7 @@ def compare_types(sym, a, b):
         return None
 
 def resolve_types_expr(sym, expression):
+    # print("expression:", expression)
     if "INTEGER" in expression:
         return "int"
     elif "FLOAT" in expression:
@@ -377,19 +396,32 @@ def resolve_types_expr(sym, expression):
     elif "ID" in expression or "array_deref" in expression:
         if "array_deref" in expression:
             id = expression["array_deref"]["name"]
+            lineno = expression["array_deref"]["lineno"]
             index_type = resolve_types_expr(sym, expression["array_deref"]["expr"])
             if index_type != "int":
                 print("array index type must resolve to an integer type.")
         elif "ID" in expression:
             id = expression["ID"]
+            lineno = expression["lineno"]
         if sym.check(id):
             print(id, sym.get_type(id))
             return sym.get_type(id)
         else:
-            print("Symbol %s used before definition.  Line %d" % (expression["ID"], expression["lineno"]))
+            print("Symbol %s used before definition.  Line %d" % (id, lineno))
             # print("symbol table:", sym.symbols)
+    elif "list" in expression:
+        result = ""
+        for item in expression["list"]["items"]:
+            tmp = resolve_types_expr(sym, item)
+            print("item:", item, "type:", tmp)
+            if result == "":
+                result = tmp
+            else:
+                if result != tmp:
+                    print("Mismatched types in list on line: %d  %s vs %s" % (expression["list"]["lineno"], result, tmp))
+        return result;
     else:
-        print("unhandled expression", expression)
+        print("unhandled expression:", expression)
 
 def resolve_types_call(sym, call):
     calling_params = call["params"]
@@ -400,6 +432,7 @@ def resolve_types_call(sym, call):
     elif len(calling_params) == len(function_params):
         # print("call:", call)
         for i in range(len(calling_params)):
+            # print("  params %d" % i, function_params[i])
             p1 = resolve_types_expr(sym, call["params"][i])
             p2 = function_params[i]["type"]
             if p1 != p2:
@@ -469,12 +502,14 @@ def resolve_types(ast):
         id = f["ID"]
         return_type = f["TYPE"]
         sym = SymbolTable()
-        for p in f["parameters"]:
-            key = next(iter(p))
-            sym.add(key, p[key])
-        for s in f["statements"]:
-            result = resolve_types_statement(sym, s, return_type)
+        for param in f["parameters"]:
+            key = next(iter(param))
+            sym.add(key, param[key])
+        for statement in f["statements"]:
+            result = resolve_types_statement(sym, statement, return_type)
         global_funcs.add(id, return_type, f["parameters"])
+    for statement in p["statements"]:
+        result = resolve_types_statement(sym, statement, None)
 
 if __name__ == '__main__':
 
@@ -516,7 +551,9 @@ def update(a: int, b: float, c: bool) -> bool:
     return z
     return y > z
 
-update(az)
+vals = [1, 2, 3, 4.0, "test", cos(x), sin(y/z)]
+vals[2+3*(4-x)] = 2.0
+update(1, 2., True)
 """
 
     lexer = Tokenizer()
