@@ -369,6 +369,8 @@ def resolve_types_expr(sym, expression):
         result = compare_types(sym, left, right)
         if result is None:
             print("Type mismatch in expression line:", lineno, left, op, right)
+        if op in ["EQ", "NE", "GT", "LT", "GTE", "LTE", "NOT"]:
+            result = "bool"
         return result
     elif "call" in expression:
         return resolve_types_call(sym, expression["call"])
@@ -407,7 +409,7 @@ def resolve_types_call(sym, call):
         print("Wrong number of parameters in function call on line:", call["lineno"], "%s()" % call["name"], len(function_params), "vs", len(calling_params))
     return global_funcs.get_type(call["name"])
 
-def resolve_types_statement(sym, statement):
+def resolve_types_statement(sym, statement, function_type):
     # statements do not propagate a type up the syntax tree
     if "conditional" in statement:
         for c in statement["conditional"]:
@@ -415,7 +417,7 @@ def resolve_types_statement(sym, statement):
             result = resolve_types_expr(sym, e)
             sub_sym = deepcopy(sym)  # variable assignments in this block aren't visible outside.
             for s in c["statements"]:
-                result = resolve_types_statement(sub_sym, s)
+                result = resolve_types_statement(sub_sym, s, function_type)
     elif "assign" in statement:
         # print("assign right:", statement["assign"])
         lhs = statement["assign"]["left"]
@@ -452,6 +454,12 @@ def resolve_types_statement(sym, statement):
         #             break
         # else:
         #             print("Wrong number of parameters in function call on line:", c["lineno"], "%s()" % c["name"], len(function_params), "vs", len(calling_params))
+    elif "return" in statement:
+        result = resolve_types_expr(sym, statement["return"])
+        if result != function_type:
+            print("function of type: %s returns type: %s" % (function_type, result))
+        else:
+            print("function of type: %s returns the correct type!" % function_type)
     else:
         print("unhandled statement:", statement)
 
@@ -465,7 +473,7 @@ def resolve_types(ast):
             key = next(iter(p))
             sym.add(key, p[key])
         for s in f["statements"]:
-            result = resolve_types_statement(sym, s)
+            result = resolve_types_statement(sym, s, return_type)
         global_funcs.add(id, return_type, f["parameters"])
 
 if __name__ == '__main__':
@@ -506,6 +514,7 @@ def update(a: int, b: float, c: bool) -> bool:
         sin(x)
         a["test"] = b[1+2*(3-x)]
     return z
+    return y > z
 
 update(az)
 """
