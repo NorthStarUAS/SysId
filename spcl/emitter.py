@@ -133,22 +133,6 @@ def resolve_types_statement(sym, statement, function_type):
             sym.add(lhs_id, right)
     elif "call" in statement:
         resolve_types_call(sym, statement["call"])
-        # calling_params = c["params"]
-        # function_params = global_funcs.get_params(c["name"])
-        # if type(function_params) is str and function_params == "any":
-        #     # ok
-        #     print("calling:", c["name"], "with any parameters ok.")
-        #     pass
-        # elif len(calling_params) == len(function_params):
-        #     print("c:", c)
-        #     for i in range(len(calling_params)):
-        #         p1 = resolve_types_expr(sym, c["params"][i])
-        #         p2 = function_params[i]["type"]
-        #         if p1 != p2:
-        #             print("Parameter type mismatch in function call on line:", c["lineno"], "%s()" % c["name"], "parameter:", i, p1, "vs", p2)
-        #             break
-        # else:
-        #             print("Wrong number of parameters in function call on line:", c["lineno"], "%s()" % c["name"], len(function_params), "vs", len(calling_params))
     elif "return" in statement:
         result = resolve_types_expr(sym, statement["return"])
         if result != function_type:
