@@ -111,7 +111,7 @@ class Parser():
                 if self.check(['TYPE']):
                     param_type = self.next().value
                 self.advance()
-                params.append({"id": "id", "type": param_type})
+                params.append({"id": id, "type": param_type})
                 print("after comma:", self.next())
             self.match(['RPAREN'])
             self.match(['ARROW'])

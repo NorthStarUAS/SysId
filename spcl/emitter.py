@@ -70,7 +70,7 @@ def resolve_types_expr(sym, expression):
             return sym.get_type(id)
         else:
             print("Symbol %s used before definition.  Line %d" % (id, lineno))
-            # print("symbol table:", sym.symbols)
+            print("symbol table:", sym.symbols)
     elif "list" in expression:
         result = ""
         for item in expression["list"]["items"]:
@@ -165,8 +165,8 @@ def resolve_types(ast):
         return_type = f["TYPE"]
         sym = SymbolTable()
         for param in f["parameters"]:
-            key = next(iter(param))
-            sym.add(key, param[key])
+            sym.add(param["id"], param["type"])
+        print("function:", sym.symbols)
         for statement in f["statements"]:
             result = resolve_types_statement(sym, statement, return_type)
         global_funcs.add(id, return_type, f["parameters"])
