@@ -4,7 +4,7 @@ import json
 from tokenizer import Tokenizer
 from parser import Parser
 
-class EmiterCxx():
+class EmitterCxx():
     def __init__():
         pass
 

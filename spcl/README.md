@@ -28,7 +28,7 @@ parsers and compilers.
    Because iterating through the AST and type checking the code is so parallel
    to the process of emitting output code, these steps are merged.
 
-4. Emiter: Currently the output target is C++ code.  In some future time frame
+4. Emitter: Currently the output target is C++ code.  In some future time frame
    I'm interested in developing an interpreter so the output would be byte code.
    This is still a hobby project and I'm puzzling my way through the steps.  In
    the back of my head as I'm designging and building forwards, I am trying to
