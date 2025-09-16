@@ -81,6 +81,12 @@ class Tokenizer(Lexer):
     #     print("line:", self.lineno)
 
     # Define a rule so we can track line numbers
+    @_(r'\n[ \t]*\n')
+    def EMPTY_LINE(self, t):
+        self.lineno += 2
+        print("empty line:", self.lineno)
+
+    # Define a rule so we can track line numbers
     last_indent = 0
     @_(r'\n[ \t]*')
     def LEADING_WHITESPACE(self, t):
@@ -141,7 +147,8 @@ class Tokenizer(Lexer):
     # Comment (python / bash style)
     @_(r'\#.*')
     def COMMENT(self, t):
-        return t
+        print("ignoring comment")
+        # return t
 
 if __name__ == '__main__':
     # data = 'x = 3 + 42 * (s - t)'

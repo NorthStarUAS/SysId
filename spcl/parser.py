@@ -154,7 +154,8 @@ class Parser():
             self.advance()
             expr = self.expression()
             result = {"return": expr}
-        print("statement:", json.dumps(result, indent="  "))
+        print("statement next:", self.next())
+        # print("statement:", json.dumps(result, indent="  "))
         return result
 
     def assign(self):

@@ -181,8 +181,9 @@ az = getDouble("/sensors/imu/az")
 
 def update(a: int, b: float, c: bool) -> bool:
     y = 2.0
+
     z = 3.0
-    if a == 2.0:
+    if a == 2.0:   # this should fail
         print("hello world")
         print("abc")
     elif c <= e:
@@ -192,8 +193,11 @@ def update(a: int, b: float, c: bool) -> bool:
         sin(x)
         a["test"] = b[1+2*(3-x)]
     return z
+
+    # and another comment
     return y > z
 
+# here is a comment too
 vals = [1, 2, 3, 4.0, "test", cos(x), sin(y/z)]
 vals[2+3*(4-x)] = 2.0
 update(1, 2., True)
