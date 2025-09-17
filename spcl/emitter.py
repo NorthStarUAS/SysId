@@ -1,3 +1,7 @@
+#!/usr/bin/env python3
+
+# this file/version begins to integrate the code emitter with the type resolver.
+
 from copy import deepcopy
 import json
 
@@ -5,16 +9,39 @@ from tokenizer import Tokenizer
 from parser import Parser
 
 class EmitterCxx():
-    def __init__():
+    def __init__(self):
+        self.code = ""
+        self.includes = set()
         pass
 
-    def gen_code(self, ast):
-        program = ast["program"]
-        for function in program["functions"]:
-            self.gen_function(function)
+    def space(self):
+        self.code += " "
 
-    def gen_function(self, function):
-        pass
+    def data_type(self, data_type):
+        if data_type == "int":
+            self.code += "int"
+        elif data_type == "float":
+            self.code += "double"
+        elif data_type == "bool":
+            self.code += "bool"
+        elif data_type == "string":
+            self.code += "string"
+            self.includes.set("<string>")
+        else:
+            self.code += "#unknown type %s#" % data_type
+
+    def string(self, val):
+        self.code += val
+
+    # def gen_code(self, ast):
+    #     program = ast["program"]
+    #     for function in program["functions"]:
+    #         self.gen_function(function)
+
+    # def gen_function(self, function):
+    #     pass
+
+emit = EmitterCxx()
 
 # Types: int, float (double), string, bool
 # Strict type checking, no implicit int->float type promotion.
@@ -104,7 +131,7 @@ def resolve_types_call(sym, call):
         print("Wrong number of parameters in function call on line:", call["lineno"], "%s()" % call["name"], len(function_params), "vs", len(calling_params))
     return global_funcs.get_type(call["name"])
 
-def resolve_types_statement(sym, statement, function_type):
+def resolve_types_statement(sym, indent, statement, function_type):
     # statements do not propagate a type up the syntax tree
     if "conditional" in statement:
         for c in statement["conditional"]:
@@ -147,15 +174,24 @@ def resolve_types(ast):
     for f in p["functions"]:
         id = f["ID"]
         return_type = f["TYPE"]
+        emit.data_type(return_type); emit.space(); emit.string(id); emit.string("(")
         sym = SymbolTable()
-        for param in f["parameters"]:
+        for i, param in enumerate(f["parameters"]):
             sym.add(param["id"], param["type"])
+            if i > 0:
+                emit.string(","); emit.space()
+            emit.data_type(param["type"]); emit.space(); emit.string(param["id"])
+        emit.string(")"); emit.space(); emit.string("{\n")
         print("function:", sym.symbols)
+        indent = "    "
         for statement in f["statements"]:
-            result = resolve_types_statement(sym, statement, return_type)
+            result = resolve_types_statement(sym, indent, statement, return_type)
+        emit.string("}\n\n")
         global_funcs.add(id, return_type, f["parameters"])
     for statement in p["statements"]:
         result = resolve_types_statement(sym, statement, None)
+    print("code:")
+    print(emit.code)
 
 if __name__ == '__main__':
     data = """
