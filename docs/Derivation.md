@@ -88,8 +88,8 @@ Back to a more mathematical representation:
 
 Do the singular value decomposition on $\mathbf{X}$:
 
-* $svd(\mathbf{M}) \rightarrow \mathbf{U} \cdot \mathbf{S} \cdot \mathbf{V}^{T}$
-* note that: $\mathbf{M} = \mathbf{U} \cdot \mathbf{S} \cdot \mathbf{V}^{T}$
+* $svd(\mathbf{X}) \rightarrow \mathbf{U} \cdot \mathbf{S} \cdot \mathbf{V}^{T}$
+* note that: $\mathbf{X} = \mathbf{U} \cdot \mathbf{S} \cdot \mathbf{V}^{T}$
 
 Substitute the SVD form into the first equation yields:
 * $\mathbf{Y} = \mathbf{M} \cdot \mathbf{U} \cdot \mathbf{S} \cdot \mathbf{V}^{T}$
