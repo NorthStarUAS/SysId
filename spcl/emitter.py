@@ -14,8 +14,8 @@ class EmitterCxx():
         self.includes = set()
         pass
 
-    def space(self):
-        self.code += " "
+    def text(self, text=""):
+        self.code += text
 
     def data_type(self, data_type):
         if data_type == "int":
@@ -28,7 +28,7 @@ class EmitterCxx():
             self.code += "string"
             self.includes.set("<string>")
         else:
-            self.code += "#unknown type %s#" % data_type
+            self.code += "#unknown type = %s#" % data_type
 
     def string(self, val):
         self.code += val
@@ -50,13 +50,13 @@ from symbols import SymbolTable, FunctionTable
 global_symbols = SymbolTable()
 global_funcs = FunctionTable()
 
-def compare_types(sym, a, b):
+def compare_types(a, b):
     if a is None or b is None:
         return None
     elif a == b:
         return a
     else:
-        # print("Type mismatch:", a, b)
+        # print("Type mismatch:", a, "ne", b)
         return None
 
 def resolve_types_expr(sym, expression):
@@ -74,7 +74,7 @@ def resolve_types_expr(sym, expression):
         lineno = expression["lineno"]
         left = resolve_types_expr(sym, expression["left"])
         right = resolve_types_expr(sym, expression["right"])
-        result = compare_types(sym, left, right)
+        result = compare_types(left, right)
         if result is None:
             print("Type mismatch in expression line:", lineno, left, op, right)
         if op in ["EQ", "NE", "GT", "LT", "GTE", "LTE", "NOT"]:
@@ -139,7 +139,7 @@ def resolve_types_statement(sym, indent, statement, function_type):
             result = resolve_types_expr(sym, e)
             sub_sym = deepcopy(sym)  # variable assignments in this block aren't visible outside.
             for s in c["statements"]:
-                result = resolve_types_statement(sub_sym, indent + " ", s, function_type)
+                result = resolve_types_statement(sub_sym, indent + "cc", s, function_type)
     elif "assign" in statement:
         # print("assign right:", statement["assign"])
         lhs = statement["assign"]["left"]
@@ -158,6 +158,7 @@ def resolve_types_statement(sym, indent, statement, function_type):
                 print("Type mismatch in expression line:", lineno, lhs_id, "=", right)
         else:
             sym.add(lhs_id, right)
+            emit.text(indent); emit.data_type(right); emit.text(" "); emit.string(lhs_id); emit.string(";\n")
     elif "call" in statement:
         resolve_types_call(sym, statement["call"])
     elif "return" in statement:
@@ -174,14 +175,14 @@ def resolve_types_main(ast):
     for f in p["functions"]:
         id = f["ID"]
         return_type = f["TYPE"]
-        emit.data_type(return_type); emit.space(); emit.string(id); emit.string("(")
+        emit.data_type(return_type); emit.text(" "); emit.string(id); emit.string("(")
         sym = SymbolTable()
         for i, param in enumerate(f["parameters"]):
             sym.add(param["id"], param["type"])
             if i > 0:
-                emit.string(","); emit.space()
-            emit.data_type(param["type"]); emit.space(); emit.string(param["id"])
-        emit.string(")"); emit.space(); emit.string("{\n")
+                emit.string(","); emit.text(" ")
+            emit.data_type(param["type"]); emit.text(" "); emit.string(param["id"])
+        emit.string(")"); emit.text(" "); emit.string("{\n")
         print("function:", sym.symbols)
         indent = "    "
         for statement in f["statements"]:
@@ -189,8 +190,10 @@ def resolve_types_main(ast):
         emit.string("}\n\n")
         global_funcs.add(id, return_type, f["parameters"])
     for statement in p["statements"]:
-        result = resolve_types_statement(sym, "", statement, None)
-    print("code:")
+        result = resolve_types_statement(sym, "  ", statement, None)
+
+    print("\ncode:")
+    print(emit.includes)
     print(emit.code)
 
 if __name__ == '__main__':
