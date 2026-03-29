@@ -139,7 +139,7 @@ def resolve_types_statement(sym, indent, statement, function_type):
             result = resolve_types_expr(sym, e)
             sub_sym = deepcopy(sym)  # variable assignments in this block aren't visible outside.
             for s in c["statements"]:
-                result = resolve_types_statement(sub_sym, s, function_type)
+                result = resolve_types_statement(sub_sym, indent + " ", s, function_type)
     elif "assign" in statement:
         # print("assign right:", statement["assign"])
         lhs = statement["assign"]["left"]
@@ -169,7 +169,7 @@ def resolve_types_statement(sym, indent, statement, function_type):
     else:
         print("unhandled statement:", statement)
 
-def resolve_types(ast):
+def resolve_types_main(ast):
     p = ast["program"]
     for f in p["functions"]:
         id = f["ID"]
@@ -189,7 +189,7 @@ def resolve_types(ast):
         emit.string("}\n\n")
         global_funcs.add(id, return_type, f["parameters"])
     for statement in p["statements"]:
-        result = resolve_types_statement(sym, statement, None)
+        result = resolve_types_statement(sym, "", statement, None)
     print("code:")
     print(emit.code)
 
@@ -247,4 +247,4 @@ update(1, 2., True)
     print("ast:")
     print(json.dumps(ast, indent="  "))
 
-    resolve_types(ast)
+    resolve_types_main(ast)
