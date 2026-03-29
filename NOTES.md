@@ -1,11 +1,13 @@
-# good site Chris found
+# Random Notes and Thoughts
+
+## good site Chris found
 
 https://aircraftflightmechanics.com/NotesIntroduction.html
 
-# Random Notes and Thoughts
+## Caution
 
-Caution: this is anevolving project.  Much of the information could be outdated.
-The notes here reflect my thinking and best understanding as I go.  With this
+This is an evolving project.  Much of the information could be outdated. The
+notes here reflect my thinking and best understanding as I go.  With this
 project specifically, I keep learning (or thinking of) new things and
 backtracking and redoing things (breaking other things in the process).  If you
 see any comments here that are wildly wrong or misleading, please let me know so
