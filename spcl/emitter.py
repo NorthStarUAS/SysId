@@ -170,7 +170,7 @@ def resolve_types_statement(sym, indent, statement, function_type):
     else:
         print("unhandled statement:", statement)
 
-def resolve_types_main(ast):
+def resolve_types_program(ast):
     p = ast["program"]
     for f in p["functions"]:
         id = f["ID"]
@@ -250,4 +250,4 @@ update(1, 2., True)
     print("ast:")
     print(json.dumps(ast, indent="  "))
 
-    resolve_types_main(ast)
+    resolve_types_program(ast)
