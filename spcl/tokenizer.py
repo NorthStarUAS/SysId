@@ -9,31 +9,30 @@ from sly import Lexer  # dnf install python3-sly; pip install --break-system-pac
 class Tokenizer(Lexer):
     # Set of token names.   This is always required
     tokens = {
-              # Literals
-              FLOAT, INTEGER, STRING, BOOLEAN,
+        # Literals
+        FLOAT, INTEGER, STRING, BOOLEAN,
 
-              # Arithmetic
-              TIMES, DIVIDE, PLUS, MINUS, EXPONENT,
+        # Arithmetic
+        TIMES, DIVIDE, PLUS, MINUS, EXPONENT,
 
-              # Boolean
-              EQ, NE, GTE, LTE, GT, LT, NOT,
+        # Boolean
+        EQ, NE, GTE, LTE, GT, LT, NOT,
 
-              # Expressions
-              ASSIGN, LPAREN, RPAREN, LBRACE, RBRACE,
+        # Expressions
+        ASSIGN, LPAREN, RPAREN, LBRACE, RBRACE,
 
-              # Syntax
-              COMMA, COLON, ARROW, PIPE,
-              INDENT, DEDENT,
-              COMMENT,
+        # Syntax
+        COMMA, COLON, ARROW, PIPE,
+        INDENT, DEDENT,
+        COMMENT,
 
-              # Symbols
-              ID, TYPE,
+        # Symbols
+        ID, TYPE,
 
-              # Keywords
-              DEF, RETURN,
-              IF, ELIF, ELSE
-
-            }
+        # Keywords
+        DEF, RETURN,
+        IF, ELIF, ELSE
+    }
 
     # String containing ignored characters between tokens
     # ignore = ' \t'
