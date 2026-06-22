@@ -1,5 +1,7 @@
 # Simulation and Control Law Development
 
+NOTICE: This project has moved to Codeberg.org <https://codeberg.org/NorthStarUAS>
+
 This project explores techniques to derive dynamics models and flight control
 laws directly from flight test data.
 
